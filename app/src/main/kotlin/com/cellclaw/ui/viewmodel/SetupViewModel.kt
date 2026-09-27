@@ -40,6 +40,14 @@ class SetupViewModel @Inject constructor(
         appConfig.userName = name
     }
 
+    fun saveOmnirouteBaseUrl(url: String) {
+        appConfig.omnirouteBaseUrl = url
+    }
+
+    fun saveCustomBaseUrl(url: String) {
+        appConfig.customBaseUrl = url
+    }
+
     fun selectProfile(profile: PermissionProfile) {
         _selectedProfile.value = profile
         appConfig.permissionProfile = profile.name

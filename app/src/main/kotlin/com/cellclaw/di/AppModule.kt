@@ -6,6 +6,7 @@ import com.cellclaw.memory.MemoryDb
 import com.cellclaw.memory.MemoryFactDao
 import com.cellclaw.memory.MessageDao
 import com.cellclaw.provider.AnthropicProvider
+import com.cellclaw.provider.CustomOpenAIProvider
 import com.cellclaw.provider.GeminiProvider
 import com.cellclaw.provider.OpenAIProvider
 import com.cellclaw.provider.OpenRouterProvider
@@ -58,6 +59,10 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideCustomOpenAIProvider(): CustomOpenAIProvider = CustomOpenAIProvider()
+
+    @Provides
+    @Singleton
     fun provideToolRegistry(
         smsRead: SmsReadTool,
         smsSend: SmsSendTool,
@@ -92,7 +97,13 @@ object AppModule {
         messagingOpen: MessagingOpenTool,
         messagingRead: MessagingReadTool,
         messagingReply: MessagingReplyTool,
-        heartbeatContext: HeartbeatContextTool
+        heartbeatContext: HeartbeatContextTool,
+        flashlightTool: FlashlightTool,
+        volumeTool: VolumeTool,
+        mediaControlTool: MediaControlTool,
+        systemStatusTool: SystemStatusTool,
+        navigationTool: NavigationTool,
+        youtubeTool: YouTubeTool
     ): ToolRegistry {
         return ToolRegistry().apply {
             register(
@@ -115,7 +126,13 @@ object AppModule {
                 notificationListen,
                 schedulerTool,
                 messagingOpen, messagingRead, messagingReply,
-                heartbeatContext
+                heartbeatContext,
+                flashlightTool,
+                volumeTool,
+                mediaControlTool,
+                systemStatusTool,
+                navigationTool,
+                youtubeTool
             )
         }
     }

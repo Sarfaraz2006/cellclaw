@@ -38,6 +38,15 @@ class SettingsViewModel @Inject constructor(
     private val _userName = MutableStateFlow(appConfig.userName)
     val userName: StateFlow<String> = _userName.asStateFlow()
 
+    private val _omnirouteBaseUrl = MutableStateFlow(appConfig.omnirouteBaseUrl)
+    val omnirouteBaseUrl: StateFlow<String> = _omnirouteBaseUrl.asStateFlow()
+
+    private val _customBaseUrl = MutableStateFlow(appConfig.customBaseUrl)
+    val customBaseUrl: StateFlow<String> = _customBaseUrl.asStateFlow()
+
+    private val _customModelName = MutableStateFlow(appConfig.customModelName)
+    val customModelName: StateFlow<String> = _customModelName.asStateFlow()
+
     private val _autoStartOnBoot = MutableStateFlow(appConfig.autoStartOnBoot)
     val autoStartOnBoot: StateFlow<Boolean> = _autoStartOnBoot.asStateFlow()
 
@@ -97,6 +106,23 @@ class SettingsViewModel @Inject constructor(
     fun setUserName(name: String) {
         appConfig.userName = name
         _userName.value = name
+    }
+
+    fun setOmnirouteBaseUrl(url: String) {
+        appConfig.omnirouteBaseUrl = url
+        _omnirouteBaseUrl.value = url
+    }
+
+    fun setCustomBaseUrl(url: String) {
+        appConfig.customBaseUrl = url
+        _customBaseUrl.value = url
+    }
+
+    fun setCustomModelName(modelName: String) {
+        appConfig.customModelName = modelName
+        _customModelName.value = modelName
+        appConfig.model = modelName
+        _model.value = modelName
     }
 
     fun setAutoStartOnBoot(enabled: Boolean) {

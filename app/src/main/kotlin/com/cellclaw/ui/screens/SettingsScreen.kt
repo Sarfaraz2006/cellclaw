@@ -40,6 +40,9 @@ fun SettingsScreen(
     val model by viewModel.model.collectAsState()
     val availableModels by viewModel.availableModels.collectAsState()
     val userName by viewModel.userName.collectAsState()
+    val omnirouteBaseUrl by viewModel.omnirouteBaseUrl.collectAsState()
+    val customBaseUrl by viewModel.customBaseUrl.collectAsState()
+    val customModelName by viewModel.customModelName.collectAsState()
     val autoStartOnBoot by viewModel.autoStartOnBoot.collectAsState()
     val policies by viewModel.policies.collectAsState()
     val voiceEnabled by viewModel.voiceEnabled.collectAsState()
@@ -109,21 +112,37 @@ fun SettingsScreen(
                                 RadioButton(
                                     selected = isActive,
                                     onClick = {
-                                        if (provider.hasKey) {
-                                            viewModel.switchProvider(provider.type)
-                                        }
+                                        viewModel.switchProvider(provider.type)
                                     }
                                 )
                             }
                         }
 
-                        if (isActive || !provider.hasKey) {
-                            ApiKeyInput(
-                                providerType = provider.type,
-                                hasKey = provider.hasKey,
-                                onSave = { key -> viewModel.saveApiKey(provider.type, key) },
-                                onRemove = { viewModel.removeApiKey(provider.type) }
-                            )
+                        if (isActive || !provider.hasKey || provider.type == "omniroute" || provider.type == "custom") {
+                            when (provider.type) {
+                                "omniroute" -> OmniRouteConfigSection(
+                                    baseUrl = omnirouteBaseUrl,
+                                    onBaseUrlChange = { viewModel.setOmnirouteBaseUrl(it) },
+                                    hasKey = provider.hasKey,
+                                    onSaveKey = { key -> viewModel.saveApiKey("omniroute", key) },
+                                    onRemoveKey = { viewModel.removeApiKey("omniroute") }
+                                )
+                                "custom" -> CustomProviderConfigSection(
+                                    baseUrl = customBaseUrl,
+                                    onBaseUrlChange = { viewModel.setCustomBaseUrl(it) },
+                                    modelName = customModelName,
+                                    onModelNameChange = { viewModel.setCustomModelName(it) },
+                                    hasKey = provider.hasKey,
+                                    onSaveKey = { key -> viewModel.saveApiKey("custom", key) },
+                                    onRemoveKey = { viewModel.removeApiKey("custom") }
+                                )
+                                else -> ApiKeyInput(
+                                    providerType = provider.type,
+                                    hasKey = provider.hasKey,
+                                    onSave = { key -> viewModel.saveApiKey(provider.type, key) },
+                                    onRemove = { viewModel.removeApiKey(provider.type) }
+                                )
+                            }
                         }
 
                         if (provider != providers.last()) {
@@ -528,3 +547,93 @@ private fun PolicyChip(policy: ToolApprovalPolicy, onToggle: () -> Unit) {
         }
     )
 }
+
+@Composable
+private fun OmniRouteConfigSection(
+    baseUrl: String,
+    onBaseUrlChange: (String) -> Unit,
+    hasKey: Boolean,
+    onSaveKey: (String) -> Unit,
+    onRemoveKey: () -> Unit
+) {
+    var urlText by remember(baseUrl) { mutableStateOf(baseUrl) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedTextField(
+            value = urlText,
+            onValueChange = {
+                urlText = it
+                onBaseUrlChange(it)
+            },
+            label = { Text("OmniRoute Base URL") },
+            placeholder = { Text("http://YOUR_SERVER_IP:20128/v1") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Text(
+            "OmniRoute runs on port 20128. Enter your server's IP address.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        ApiKeyInput(
+            providerType = "omniroute",
+            hasKey = hasKey,
+            onSave = onSaveKey,
+            onRemove = onRemoveKey
+        )
+    }
+}
+
+@Composable
+private fun CustomProviderConfigSection(
+    baseUrl: String,
+    onBaseUrlChange: (String) -> Unit,
+    modelName: String,
+    onModelNameChange: (String) -> Unit,
+    hasKey: Boolean,
+    onSaveKey: (String) -> Unit,
+    onRemoveKey: () -> Unit
+) {
+    var urlText by remember(baseUrl) { mutableStateOf(baseUrl) }
+    var modelText by remember(modelName) { mutableStateOf(modelName) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedTextField(
+            value = urlText,
+            onValueChange = {
+                urlText = it
+                onBaseUrlChange(it)
+            },
+            label = { Text("Custom API Base URL") },
+            placeholder = { Text("https://api.groq.com/openai/v1") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        OutlinedTextField(
+            value = modelText,
+            onValueChange = {
+                modelText = it
+                onModelNameChange(it)
+            },
+            label = { Text("Custom Model Name") },
+            placeholder = { Text("deepseek-chat or llama-3.3-70b-versatile") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        ApiKeyInput(
+            providerType = "custom",
+            hasKey = hasKey,
+            onSave = onSaveKey,
+            onRemove = onRemoveKey
+        )
+    }
+}
+

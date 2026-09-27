@@ -42,6 +42,7 @@ fun SetupScreen(
     val selectedProvider by viewModel.selectedProvider.collectAsState()
     val selectedProfile by viewModel.selectedProfile.collectAsState()
     var apiKey by remember { mutableStateOf("") }
+    var customUrl by remember { mutableStateOf("") }
     var userName by remember { mutableStateOf("") }
     var showApiKey by remember { mutableStateOf(false) }
     var currentStep by remember { mutableIntStateOf(0) }
@@ -132,6 +133,27 @@ fun SetupScreen(
 
                     Spacer(Modifier.height(8.dp))
 
+                    if (selectedProvider == "omniroute" || selectedProvider == "custom") {
+                        OutlinedTextField(
+                            value = customUrl,
+                            onValueChange = { customUrl = it },
+                            label = {
+                                Text(if (selectedProvider == "omniroute") "OmniRoute Base URL" else "Custom API Base URL")
+                            },
+                            placeholder = {
+                                Text(if (selectedProvider == "omniroute") "http://YOUR_SERVER_IP:20128/v1" else "https://api.groq.com/openai/v1")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Text(
+                            if (selectedProvider == "omniroute") "Enter your server IP with port 20128. API key is optional."
+                            else "Enter any OpenAI-compatible API base URL.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { apiKey = it },
@@ -141,6 +163,7 @@ fun SetupScreen(
                                     "anthropic" -> "Anthropic API Key"
                                     "openai" -> "OpenAI API Key"
                                     "gemini" -> "Google AI API Key"
+                                    "omniroute" -> "API Key (Optional)"
                                     else -> "API Key"
                                 }
                             )
@@ -165,6 +188,7 @@ fun SetupScreen(
                         "anthropic" -> "Starts with sk-ant-"
                         "openai" -> "Starts with sk-"
                         "gemini" -> "Starts with AIza"
+                        "omniroute" -> "Optional if no auth is configured on OmniRoute"
                         else -> ""
                     }
                     if (keyHint.isNotEmpty()) {
@@ -177,11 +201,18 @@ fun SetupScreen(
 
                     Button(
                         onClick = {
-                            viewModel.saveApiKey(selectedProvider, apiKey)
+                            if (selectedProvider == "omniroute" && customUrl.isNotBlank()) {
+                                viewModel.saveOmnirouteBaseUrl(customUrl)
+                            } else if (selectedProvider == "custom" && customUrl.isNotBlank()) {
+                                viewModel.saveCustomBaseUrl(customUrl)
+                            }
+                            if (apiKey.isNotBlank()) {
+                                viewModel.saveApiKey(selectedProvider, apiKey)
+                            }
                             currentStep = 1
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = apiKey.length >= 10
+                        enabled = apiKey.length >= 10 || selectedProvider == "omniroute" || selectedProvider == "custom"
                     ) {
                         Text("Continue")
                     }

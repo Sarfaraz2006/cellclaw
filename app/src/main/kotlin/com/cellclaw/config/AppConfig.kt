@@ -21,6 +21,18 @@ class AppConfig @Inject constructor(
         get() = prefs.getString("model", "claude-sonnet-4-6") ?: "claude-sonnet-4-6"
         set(value) = prefs.edit().putString("model", value).apply()
 
+    var omnirouteBaseUrl: String
+        get() = prefs.getString("omniroute_base_url", "http://10.0.2.2:20128/v1") ?: "http://10.0.2.2:20128/v1"
+        set(value) = prefs.edit().putString("omniroute_base_url", value).apply()
+
+    var customBaseUrl: String
+        get() = prefs.getString("custom_base_url", "https://api.openai.com/v1") ?: "https://api.openai.com/v1"
+        set(value) = prefs.edit().putString("custom_base_url", value).apply()
+
+    var customModelName: String
+        get() = prefs.getString("custom_model_name", "gemini-2.5-flash") ?: "gemini-2.5-flash"
+        set(value) = prefs.edit().putString("custom_model_name", value).apply()
+
     var maxTokens: Int
         get() = prefs.getInt("max_tokens", 4096)
         set(value) = prefs.edit().putInt("max_tokens", value).apply()
@@ -46,8 +58,12 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putBoolean("voice_enabled", value).apply()
 
     var autoSpeakResponses: Boolean
-        get() = prefs.getBoolean("auto_speak_responses", false)
+        get() = prefs.getBoolean("auto_speak_responses", true)
         set(value) = prefs.edit().putBoolean("auto_speak_responses", value).apply()
+
+    var continuousVoiceMode: Boolean
+        get() = prefs.getBoolean("continuous_voice_mode", true)
+        set(value) = prefs.edit().putBoolean("continuous_voice_mode", value).apply()
 
     var overlayEnabled: Boolean
         get() = prefs.getBoolean("overlay_enabled", false)

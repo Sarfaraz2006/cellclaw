@@ -1,9 +1,12 @@
-name: Build CellClaw APK
+name: Build JARVIS APK
 
 on:
   workflow_dispatch:
   push:
     branches: [ master, main ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -32,6 +35,28 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CellClaw-debug-apk
+          name: JARVIS-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
+        with:
+          tag_name: v1.0.0-jarvis
+          name: "JARVIS APK v1.0.0"
+          body: |
+            ### 🤖 JARVIS Autonomous AI Assistant for Android
+            
+            **What's new in this build:**
+            - 🦾 **Universal AI Engine:** Direct OmniRoute (server proxy) & Custom OpenAI endpoint support.
+            - 🔦 **Hardware Controls:** Flashlight on/off/toggle, volume control & mute.
+            - 🎵 **Media Playback:** Play, pause, next/prev tracks on Spotify, YouTube, etc.
+            - 📊 **Diagnostics:** Full system status (Battery %, RAM, Storage, Wi-Fi).
+            - 🎙️ **Hands-Free Continuous Voice:** Zero-beep audio loop & auto-listen.
+            - 🔷 **Arc Reactor HUD:** Glowing Stark Arc Reactor floating interface.
+            
+            Download `app-debug.apk` below directly to your phone!
+          files: app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

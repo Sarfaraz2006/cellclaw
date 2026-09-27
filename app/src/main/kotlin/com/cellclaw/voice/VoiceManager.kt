@@ -2,14 +2,19 @@ package com.cellclaw.voice
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import com.cellclaw.config.AppConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,13 +25,25 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Hands-Free JARVIS Voice Engine.
+ * Features:
+ * - Continuous conversation loop (auto-listens after TTS reply).
+ * - Zero-beep system stream suppression trick.
+ * - Multi-lingual speech recognition (English / Urdu / Hindi support).
+ */
 @Singleton
 class VoiceManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val appConfig: AppConfig
 ) {
     private var speechRecognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
@@ -51,9 +68,20 @@ class VoiceManager @Inject constructor(
                     override fun onStart(utteranceId: String?) {
                         _isSpeaking.value = true
                     }
+
                     override fun onDone(utteranceId: String?) {
                         _isSpeaking.value = false
+                        // Continuous conversation: auto-listen for follow-up
+                        if (appConfig.continuousVoiceMode && appConfig.voiceEnabled) {
+                            scope.launch {
+                                delay(450)
+                                if (!_isSpeaking.value && !_isListening.value) {
+                                    mainHandler.post { startListening() }
+                                }
+                            }
+                        }
                     }
+
                     @Deprecated("Deprecated in API")
                     override fun onError(utteranceId: String?) {
                         _isSpeaking.value = false
@@ -67,56 +95,103 @@ class VoiceManager @Inject constructor(
     }
 
     fun startListening() {
-        if (_isListening.value) return
+        if (_isListening.value || _isSpeaking.value) return
 
-        try {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
-            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    _isListening.value = true
-                    Log.d(TAG, "Ready for speech")
-                }
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {
-                    _isListening.value = false
-                }
-                override fun onError(error: Int) {
-                    _isListening.value = false
-                    Log.w(TAG, "Recognition error: $error")
-                }
-                override fun onResults(results: Bundle?) {
-                    _isListening.value = false
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val text = matches?.firstOrNull()
-                    if (!text.isNullOrBlank()) {
-                        _recognizedText.tryEmit(text)
-                        Log.d(TAG, "Recognized: $text")
+        mainHandler.post {
+            try {
+                // Suppress Android system recognition beep
+                try {
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_MUTE, 0)
+                } catch (_: Exception) {}
+
+                speechRecognizer?.destroy()
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        _isListening.value = true
+                        // Restore system volume right after speech engine is primed
+                        mainHandler.postDelayed({
+                            try {
+                                audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                            } catch (_: Exception) {}
+                        }, 100)
                     }
-                }
-                override fun onPartialResults(partialResults: Bundle?) {}
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
 
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+
+                    override fun onEndOfSpeech() {
+                        _isListening.value = false
+                        try {
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                        } catch (_: Exception) {}
+                    }
+
+                    override fun onError(error: Int) {
+                        _isListening.value = false
+                        try {
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                        } catch (_: Exception) {}
+                        Log.w(TAG, "Recognition error: $error")
+
+                        // If continuous mode is enabled and it was a timeout (no speech), resume or stay ready
+                        if (appConfig.continuousVoiceMode && appConfig.voiceEnabled && (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT)) {
+                            scope.launch {
+                                delay(1200)
+                                if (!_isSpeaking.value && !_isListening.value && appConfig.voiceEnabled) {
+                                    mainHandler.post { startListening() }
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        _isListening.value = false
+                        try {
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                        } catch (_: Exception) {}
+
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull()
+                        if (!text.isNullOrBlank()) {
+                            _recognizedText.tryEmit(text)
+                            Log.d(TAG, "Recognized: $text")
+                        }
+                    }
+
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                }
+                speechRecognizer?.startListening(intent)
+            } catch (e: Exception) {
+                _isListening.value = false
+                try {
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                } catch (_: Exception) {}
+                Log.e(TAG, "Failed to start listening: ${e.message}")
             }
-            speechRecognizer?.startListening(intent)
-        } catch (e: Exception) {
-            _isListening.value = false
-            Log.e(TAG, "Failed to start listening: ${e.message}")
         }
     }
 
     fun stopListening() {
-        try {
-            speechRecognizer?.stopListening()
-            _isListening.value = false
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to stop listening: ${e.message}")
+        mainHandler.post {
+            try {
+                speechRecognizer?.stopListening()
+                _isListening.value = false
+                try {
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to stop listening: ${e.message}")
+            }
         }
     }
 
@@ -125,8 +200,8 @@ class VoiceManager @Inject constructor(
             Log.w(TAG, "TTS not ready")
             return
         }
-        val utteranceId = "cellclaw_${System.currentTimeMillis()}"
-        tts?.speak(text, TextToSpeech.QUEUE_ADD, null, utteranceId)
+        val utteranceId = "jarvis_${System.currentTimeMillis()}"
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
     }
 
     fun stopSpeaking() {
@@ -135,12 +210,18 @@ class VoiceManager @Inject constructor(
     }
 
     fun destroy() {
-        speechRecognizer?.destroy()
-        speechRecognizer = null
-        tts?.shutdown()
-        tts = null
-        _isListening.value = false
-        _isSpeaking.value = false
+        scope.cancel()
+        mainHandler.post {
+            speechRecognizer?.destroy()
+            speechRecognizer = null
+            tts?.shutdown()
+            tts = null
+            _isListening.value = false
+            _isSpeaking.value = false
+            try {
+                audioManager?.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+            } catch (_: Exception) {}
+        }
     }
 
     companion object {

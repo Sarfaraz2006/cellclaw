@@ -655,18 +655,19 @@ class OverlayService : Service() {
             combine(agentLoop.state, approvalQueue.requests) { state, requests ->
                 Pair(state, requests)
             }.collect { (state, requests) ->
-                // Tint bubble based on state
+                // Tint bubble based on state - Jarvis Arc Reactor theme
                 val color = when (state) {
-                    AgentState.IDLE -> Color.parseColor("#4CAF50")
-                    AgentState.THINKING -> Color.parseColor("#2196F3")
-                    AgentState.EXECUTING_TOOLS -> Color.parseColor("#FF9800")
-                    AgentState.WAITING_APPROVAL -> Color.parseColor("#F44336")
-                    AgentState.PAUSED -> Color.parseColor("#9E9E9E")
-                    AgentState.ERROR -> Color.parseColor("#B00020")
+                    AgentState.IDLE -> Color.parseColor("#00E5FF") // Electric Arc Reactor Cyan
+                    AgentState.THINKING -> Color.parseColor("#2979FF") // Jarvis Cobalt Blue
+                    AgentState.EXECUTING_TOOLS -> Color.parseColor("#FFD600") // Stark Gold
+                    AgentState.WAITING_APPROVAL -> Color.parseColor("#FF3D00") // Security Alert
+                    AgentState.PAUSED -> Color.parseColor("#78909C")
+                    AgentState.ERROR -> Color.parseColor("#FF1744")
                 }
                 bubbleView?.let { bubble ->
                     val bg = bubble.background as? GradientDrawable
                     bg?.setColor(color)
+                    bg?.setStroke(dpToPx(2), Color.parseColor("#CCFFFFFF"))
                 }
 
                 // Show/hide approve/deny buttons
@@ -712,8 +713,8 @@ class OverlayService : Service() {
 
     private fun buildOverlayNotification(): Notification {
         return NotificationCompat.Builder(this, CellClawApp.CHANNEL_SERVICE)
-            .setContentTitle("CellClaw")
-            .setContentText("Overlay active")
+            .setContentTitle("JARVIS")
+            .setContentText("Systems online — All systems operational")
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setSilent(true)
