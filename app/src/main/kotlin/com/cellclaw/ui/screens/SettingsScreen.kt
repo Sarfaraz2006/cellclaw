@@ -1,5 +1,6 @@
 package com.cellclaw.ui.screens
 
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -464,6 +465,61 @@ fun SettingsScreen(
                                 onToggle = { viewModel.togglePolicy(tool) }
                             )
                         }
+                    }
+                }
+            }
+
+            // System Permissions
+            Text("System Permissions & Accessibility", style = MaterialTheme.typography.titleMedium)
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val a11yEnabled = remember {
+                        val expected = ComponentName(context, "com.cellclaw.service.CellClawAccessibility")
+                        val flat = Settings.Secure.getString(
+                            context.contentResolver,
+                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                        ) ?: ""
+                        flat.split(':').any { ComponentName.unflattenFromString(it) == expected }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Accessibility Service", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                if (a11yEnabled) "Active & Operational" else "Disabled / Sideload Restricted",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (a11yEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                        TextButton(onClick = {
+                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            })
+                        }) {
+                            Text("Open Settings")
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            try {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Open App Info (Allow Restricted Settings)")
                     }
                 }
             }

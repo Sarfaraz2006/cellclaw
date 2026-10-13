@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">JARVIS</string>
-    <string name="notification_channel_service">JARVIS Service</string>
-    <string name="notification_channel_approvals">Approval Requests</string>
-    <string name="notification_channel_alerts">Alerts</string>
-    <string name="notification_channel_wake_word">Wake Word</string>
+    <string name="app_name">APEX AI</string>
+    <string name="notification_channel_service">APEX AI Service</string>
+    <string name="notification_channel_approvals">APEX AI Approvals</string>
+    <string name="notification_channel_alerts">APEX AI Alerts</string>
+    <string name="notification_channel_wake_word">APEX AI Voice Trigger</string>
+    <string name="accessibility_service_name">APEX AI Screen Service</string>
+    <string name="accessibility_service_description">Autonomous screen automation, interaction, and reading service for APEX AI.</string>
 </resources>

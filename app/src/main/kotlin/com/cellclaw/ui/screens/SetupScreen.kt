@@ -49,7 +49,7 @@ fun SetupScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Welcome to CellClaw") })
+            TopAppBar(title = { Text("Welcome to APEX AI") })
         }
     ) { padding ->
         Column(
@@ -72,7 +72,7 @@ fun SetupScreen(
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Text(
-                        "CellClaw supports multiple AI providers. Pick one and enter your API key.",
+                        "APEX AI supports multiple AI providers. Pick one and enter your API key.",
                         style = MaterialTheme.typography.bodyLarge
                     )
 
@@ -220,11 +220,11 @@ fun SetupScreen(
 
                 1 -> {
                     Text(
-                        "Tell CellClaw about you",
+                        "Tell APEX AI about you",
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Text(
-                        "This helps CellClaw personalize its responses.",
+                        "This helps APEX AI personalize its responses.",
                         style = MaterialTheme.typography.bodyLarge
                     )
 
@@ -261,7 +261,7 @@ fun SetupScreen(
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Text(
-                        "How much freedom should CellClaw have? You can change this anytime in Settings.",
+                        "How much freedom should APEX AI have? You can change this anytime in Settings.",
                         style = MaterialTheme.typography.bodyLarge
                     )
 
@@ -357,7 +357,7 @@ fun SetupScreen(
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Text(
-                        "CellClaw needs these permissions to work. Tap each one to open settings.",
+                        "APEX AI needs these permissions to work. Tap each one to open settings.",
                         style = MaterialTheme.typography.bodyLarge
                     )
 
@@ -387,6 +387,40 @@ fun SetupScreen(
                         onClick = { openAccessibilitySettings(context) }
                     )
 
+                    if (!accessibilityGranted) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    "Android 13 / 14+ Restricted Setting Fix",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Agar Accessibility toggle grayed out ya blocked hai:\n" +
+                                    "1. Pehle 'Grant' dabakar Accessibility me jayein aur APEX AI par tap karke toggle on karein ('Restricted setting' dialog aane par OK dabayein).\n" +
+                                    "2. Fir niche 'Open App Info' button dabayein -> Upar 3 dots (⋮) dabayein -> 'Allow restricted settings' chunein aur screen lock dalein.\n" +
+                                    "3. Wapas aakar toggle on kar lijiye!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { openAppDetails(context) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Open App Info (Direct)")
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Notification listener
@@ -411,7 +445,7 @@ fun SetupScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = allGranted
                     ) {
-                        Text("Start CellClaw")
+                        Text("Start APEX AI")
                     }
 
                     if (!allGranted) {
@@ -495,6 +529,16 @@ private fun openAccessibilitySettings(context: android.content.Context) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     )
+}
+
+private fun openAppDetails(context: android.content.Context) {
+    try {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {}
 }
 
 private fun isNotificationListenerEnabled(context: android.content.Context): Boolean {

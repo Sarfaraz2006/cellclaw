@@ -121,7 +121,7 @@ class CellClawTileService : TileService() {
             when (agentLoop.state.value) {
                 AgentState.IDLE -> {
                     tile.state = Tile.STATE_ACTIVE
-                    tile.label = "CellClaw"
+                    tile.label = "APEX AI"
                 }
                 AgentState.THINKING -> {
                     tile.state = Tile.STATE_ACTIVE
@@ -146,7 +146,7 @@ class CellClawTileService : TileService() {
             }
         } catch (e: Exception) {
             tile.state = Tile.STATE_INACTIVE
-            tile.label = "CellClaw"
+            tile.label = "APEX AI"
         }
         tile.updateTile()
     }

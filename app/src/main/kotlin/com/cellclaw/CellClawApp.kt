@@ -32,7 +32,7 @@ class CellClawApp : Application(), Configuration.Provider {
             getString(R.string.notification_channel_service),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "CellClaw background service status"
+            description = "APEX AI background service status"
             setShowBadge(false)
         }
 
@@ -41,7 +41,7 @@ class CellClawApp : Application(), Configuration.Provider {
             getString(R.string.notification_channel_approvals),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Tool execution approval requests"
+            description = "APEX AI tool execution approval requests"
         }
 
         val alertChannel = NotificationChannel(
@@ -49,7 +49,7 @@ class CellClawApp : Application(), Configuration.Provider {
             getString(R.string.notification_channel_alerts),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "General alerts and notifications"
+            description = "APEX AI alerts and system notifications"
         }
 
         val wakeWordChannel = NotificationChannel(
@@ -57,7 +57,7 @@ class CellClawApp : Application(), Configuration.Provider {
             getString(R.string.notification_channel_wake_word),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Wake word detection status"
+            description = "APEX AI voice wake word status"
             setShowBadge(false)
         }
 

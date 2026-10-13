@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#1565C0</color>
+    <color name="ic_launcher_background">#0B0E17</color>
+    <color name="apex_cyan">#00E5FF</color>
+    <color name="apex_blue">#2979FF</color>
+    <color name="apex_violet">#7C4DFF</color>
+    <color name="apex_surface">#131826</color>
 </resources>

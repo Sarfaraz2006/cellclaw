@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Top Zenith Spark -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,16.8 A2.2,2.2 0 1,0 54,21.2 A2.2,2.2 0 1,0 54,16.8 Z" />
+
+    <!-- Left Flanking Energy Wing -->
+    <path
+        android:fillColor="#7C4DFF"
+        android:pathData="M23,61 L27,55 L32,64 L28,70 Z" />
+
+    <!-- Right Flanking Energy Wing -->
+    <path
+        android:fillColor="#7C4DFF"
+        android:pathData="M85,61 L81,55 L76,64 L80,70 Z" />
+
+    <!-- APEX Primary Pinnacle 'A' Chevron -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,25 L78,77 L68,77 L54,48 L40,77 L30,77 Z" />
+
+    <!-- Quantum Energy Crossbar -->
+    <path
+        android:fillColor="#2979FF"
+        android:pathData="M39,59 L69,59 L66,65 L42,65 Z" />
+
+    <!-- Central Neural Core Diamond -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,32 L60,39 L54,46 L48,39 Z" />
+
+</vector>

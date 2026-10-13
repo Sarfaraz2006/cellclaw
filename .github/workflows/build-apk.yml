@@ -1,4 +1,4 @@
-name: Build JARVIS APK
+name: Build APEX AI APK
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-debug-apk
+          name: APEX-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
@@ -43,18 +43,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.0.0-jarvis
-          name: "JARVIS APK v1.0.0"
+          tag_name: v0.2.0-apex
+          name: "APEX AI APK v0.2.0"
           body: |
-            ### 🤖 JARVIS Autonomous AI Assistant for Android
+            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.2.0)
             
             **What's new in this build:**
-            - 🦾 **Universal AI Engine:** Direct OmniRoute (server proxy) & Custom OpenAI endpoint support.
-            - 🔦 **Hardware Controls:** Flashlight on/off/toggle, volume control & mute.
-            - 🎵 **Media Playback:** Play, pause, next/prev tracks on Spotify, YouTube, etc.
-            - 📊 **Diagnostics:** Full system status (Battery %, RAM, Storage, Wi-Fi).
-            - 🎙️ **Hands-Free Continuous Voice:** Zero-beep audio loop & auto-listen.
-            - 🔷 **Arc Reactor HUD:** Glowing Stark Arc Reactor floating interface.
+            - 🚀 **Personalized Rebrand to APEX AI:** Elite autonomous assistant identity, custom cyber apex icon, and sleek visual theme.
+            - 🛡️ **Android 13/14+ Restricted Settings Helper:** Built-in guidance and one-tap direct App Info launcher to easily bypass sideload accessibility locks.
+            - ⚡ **Ultra-Fast Screen Control:** Async gesture completion (`CompletableDeferred` + `GestureResultCallback`) and composite `tap_and_read` single-turn actions.
+            - 🎙️ **Zero-Latency Voice Engine:** 120ms turnaround latency between TTS completion and recognition activation.
+            - 🦾 **Universal AI Core:** Direct OmniRoute proxy, Gemini, Claude, and OpenAI support.
             
             Download `app-debug.apk` below directly to your phone!
           files: app/build/outputs/apk/debug/*.apk

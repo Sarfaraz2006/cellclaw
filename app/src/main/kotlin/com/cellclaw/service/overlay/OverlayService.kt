@@ -713,7 +713,7 @@ class OverlayService : Service() {
 
     private fun buildOverlayNotification(): Notification {
         return NotificationCompat.Builder(this, CellClawApp.CHANNEL_SERVICE)
-            .setContentTitle("JARVIS")
+            .setContentTitle("APEX AI")
             .setContentText("Systems online — All systems operational")
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
