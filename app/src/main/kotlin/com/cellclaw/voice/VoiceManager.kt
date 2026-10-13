@@ -74,7 +74,7 @@ class VoiceManager @Inject constructor(
                         // Continuous conversation: auto-listen for follow-up
                         if (appConfig.continuousVoiceMode && appConfig.voiceEnabled) {
                             scope.launch {
-                                delay(450)
+                                delay(120)
                                 if (!_isSpeaking.value && !_isListening.value) {
                                     mainHandler.post { startListening() }
                                 }
@@ -138,7 +138,7 @@ class VoiceManager @Inject constructor(
                         // If continuous mode is enabled and it was a timeout (no speech), resume or stay ready
                         if (appConfig.continuousVoiceMode && appConfig.voiceEnabled && (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT)) {
                             scope.launch {
-                                delay(1200)
+                                delay(400)
                                 if (!_isSpeaking.value && !_isListening.value && appConfig.voiceEnabled) {
                                     mainHandler.post { startListening() }
                                 }
