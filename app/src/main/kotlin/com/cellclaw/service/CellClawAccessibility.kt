@@ -18,6 +18,7 @@ import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import java.io.File
 import java.io.FileOutputStream
@@ -26,6 +27,8 @@ class CellClawAccessibility : AccessibilityService() {
 
     private var screenWidth = 1080
     private var screenHeight = 2400
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val actionReceiver = object : BroadcastReceiver() {
         @Suppress("DEPRECATION")
@@ -37,47 +40,60 @@ class CellClawAccessibility : AccessibilityService() {
 
             Log.d(TAG, "Received action: $action")
 
-            val result = when (action) {
-                "tap" -> handleTap(
-                    intent.getIntExtra("x", 0),
-                    intent.getIntExtra("y", 0),
-                    intent.getStringExtra("text")
-                )
-                "type" -> handleType(intent.getStringExtra("text") ?: "")
-                "swipe" -> handleSwipe(intent.getStringExtra("direction") ?: "right")
-                "scroll" -> handleScroll(intent.getStringExtra("direction") ?: "down")
-                "back" -> {
-                    performGlobalAction(GLOBAL_ACTION_BACK)
-                    successResult("back", "Pressed back button")
-                }
-                "home" -> {
-                    performGlobalAction(GLOBAL_ACTION_HOME)
-                    successResult("home", "Pressed home button")
-                }
-                "recents" -> {
-                    performGlobalAction(GLOBAL_ACTION_RECENTS)
-                    successResult("recents", "Opened recents")
-                }
-                "read_screen" -> readScreen()
-                "find_element" -> findElement(intent.getStringExtra("text") ?: "")
-                "screenshot" -> {
-                    handleScreenshot(resultReceiver)
-                    return // Result sent asynchronously
-                }
-                "wait_and_read" -> {
-                    // Small delay then read — useful after transitions
-                    android.os.Handler(mainLooper).postDelayed({
-                        val r = readScreen()
-                        sendResult(resultReceiver, r)
-                    }, intent.getLongExtra("delay_ms", 500))
-                    return // Don't send result immediately
-                }
-                else -> buildJsonObject {
-                    put("error", "Unknown action: $action")
+            serviceScope.launch {
+                try {
+                    val result = when (action) {
+                        "tap" -> handleTap(
+                            intent.getIntExtra("x", 0),
+                            intent.getIntExtra("y", 0),
+                            intent.getStringExtra("text")
+                        )
+                        "tap_and_read" -> handleTapAndRead(
+                            intent.getIntExtra("x", 0),
+                            intent.getIntExtra("y", 0),
+                            intent.getStringExtra("text"),
+                            intent.getLongExtra("settle_ms", 150L)
+                        )
+                        "type" -> handleType(intent.getStringExtra("text") ?: "")
+                        "swipe" -> handleSwipe(intent.getStringExtra("direction") ?: "right")
+                        "scroll" -> handleScroll(intent.getStringExtra("direction") ?: "down")
+                        "back" -> {
+                            performGlobalAction(GLOBAL_ACTION_BACK)
+                            successResult("back", "Pressed back button")
+                        }
+                        "home" -> {
+                            performGlobalAction(GLOBAL_ACTION_HOME)
+                            successResult("home", "Pressed home button")
+                        }
+                        "recents" -> {
+                            performGlobalAction(GLOBAL_ACTION_RECENTS)
+                            successResult("recents", "Opened recents")
+                        }
+                        "read_screen" -> readScreen()
+                        "find_element" -> findElement(intent.getStringExtra("text") ?: "")
+                        "screenshot" -> {
+                            handleScreenshot(resultReceiver)
+                            null // Result sent asynchronously by handleScreenshot
+                        }
+                        "wait_and_read" -> {
+                            // Trimmed default delay from 500ms to 150ms
+                            val delayMs = intent.getLongExtra("delay_ms", 150L)
+                            delay(delayMs)
+                            readScreen()
+                        }
+                        else -> buildJsonObject {
+                            put("error", "Unknown action: $action")
+                        }
+                    }
+
+                    if (result != null) {
+                        sendResult(resultReceiver, result)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error handling action $action", e)
+                    sendResult(resultReceiver, errorResult("Action failed: ${e.message}"))
                 }
             }
-
-            sendResult(resultReceiver, result)
         }
     }
 
@@ -109,8 +125,13 @@ class CellClawAccessibility : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
+        serviceScope.cancel()
         AccessibilityBridge.onServiceDisconnected()
-        unregisterReceiver(actionReceiver)
+        try {
+            unregisterReceiver(actionReceiver)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error unregistering actionReceiver", e)
+        }
         super.onDestroy()
     }
 
@@ -129,28 +150,146 @@ class CellClawAccessibility : AccessibilityService() {
         }
     }
 
+    // ── Asynchronous Gesture Support ─────────────────────────────────────
+
+    sealed class GestureResultState {
+        data object Success : GestureResultState()
+        data class Cancelled(val reason: String = "Gesture cancelled by system") : GestureResultState()
+        data class Rejected(val reason: String = "Gesture could not be queued") : GestureResultState()
+        data class TimedOut(val reason: String = "Gesture timed out awaiting completion") : GestureResultState()
+    }
+
+    private suspend fun dispatchGestureAwait(
+        gesture: GestureDescription,
+        timeoutMs: Long = 2000L
+    ): GestureResultState {
+        val deferred = CompletableDeferred<GestureResultState>()
+        val callback = object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+                deferred.complete(GestureResultState.Success)
+            }
+
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                deferred.complete(GestureResultState.Cancelled())
+            }
+        }
+
+        val queued = dispatchGesture(gesture, callback, null)
+        if (!queued) {
+            return GestureResultState.Rejected()
+        }
+
+        return try {
+            withTimeout(timeoutMs) {
+                deferred.await()
+            }
+        } catch (e: TimeoutCancellationException) {
+            GestureResultState.TimedOut()
+        }
+    }
+
+    // ── Resilient Active Window Acquisition ─────────────────────────────
+
+    private suspend fun getActiveRootNodeWithRetry(maxAttempts: Int = 4, intervalMs: Long = 40L): AccessibilityNodeInfo? {
+        for (i in 1..maxAttempts) {
+            val root = rootInActiveWindow
+            if (root != null) return root
+            if (i < maxAttempts) {
+                delay(intervalMs)
+            }
+        }
+        return null
+    }
+
     // ── Tap ──────────────────────────────────────────────────────────────
 
-    private fun handleTap(x: Int, y: Int, text: String?): JsonObject {
+    private suspend fun handleTap(x: Int, y: Int, text: String?): JsonObject {
         if (text != null) {
-            val rootNode = rootInActiveWindow ?: return errorResult("No active window")
+            val rootNode = getActiveRootNodeWithRetry() ?: return errorResult("No active window")
             val nodes = rootNode.findAccessibilityNodeInfosByText(text)
             if (nodes.isNullOrEmpty()) return errorResult("Element not found: '$text'")
 
             val node = nodes.first()
-            // Try clicking the node directly, or find a clickable parent
             val clickable = findClickableParent(node) ?: node
-            clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-            return successResult("tap", "Tapped on '$text'")
+            val clicked = clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            if (clicked) {
+                return successResult("tap", "Tapped on '$text'")
+            }
+
+            // Fallback: node click failed; inject coordinate tap at center of bounds
+            val bounds = Rect()
+            clickable.getBoundsInScreen(bounds)
+            if (bounds.isEmpty) {
+                node.getBoundsInScreen(bounds)
+            }
+
+            if (!bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0) {
+                val cx = bounds.centerX()
+                val cy = bounds.centerY()
+                val path = Path().apply { moveTo(cx.toFloat(), cy.toFloat()) }
+                val gesture = GestureDescription.Builder()
+                    .addStroke(GestureDescription.StrokeDescription(path, 0, 50)) // Trimmed to 50ms
+                    .build()
+
+                return when (val state = dispatchGestureAwait(gesture)) {
+                    is GestureResultState.Success -> successResult("tap", "Tapped on '$text' via coordinate fallback ($cx, $cy)")
+                    is GestureResultState.Cancelled -> errorResult("Gesture cancelled for '$text' fallback: ${state.reason}")
+                    is GestureResultState.Rejected -> errorResult("Gesture rejected for '$text' fallback: ${state.reason}")
+                    is GestureResultState.TimedOut -> errorResult("Gesture timed out for '$text' fallback: ${state.reason}")
+                }
+            }
+
+            return errorResult("Click action failed on '$text' and coordinate bounds unavailable")
         }
 
         // Tap at coordinates
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 100))
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 50)) // Trimmed from 100ms to 50ms
             .build()
-        dispatchGesture(gesture, null, null)
-        return successResult("tap", "Tapped at ($x, $y)")
+
+        return when (val state = dispatchGestureAwait(gesture)) {
+            is GestureResultState.Success -> successResult("tap", "Tapped at ($x, $y)")
+            is GestureResultState.Cancelled -> errorResult("Gesture cancelled at ($x, $y): ${state.reason}")
+            is GestureResultState.Rejected -> errorResult("Gesture rejected at ($x, $y): ${state.reason}")
+            is GestureResultState.TimedOut -> errorResult("Gesture timed out at ($x, $y): ${state.reason}")
+        }
+    }
+
+    // ── Composite Tap and Read ───────────────────────────────────────────
+
+    private suspend fun handleTapAndRead(
+        x: Int,
+        y: Int,
+        text: String?,
+        settleMs: Long = 150L
+    ): JsonObject {
+        val tapResult = handleTap(x, y, text)
+        val tapSuccess = tapResult["success"]?.jsonPrimitive?.booleanOrNull ?: false
+        if (!tapSuccess) {
+            val tapError = tapResult["error"]?.jsonPrimitive?.contentOrNull ?: "Tap failed"
+            return buildJsonObject {
+                put("success", false)
+                put("action", "tap_and_read")
+                put("error", tapError)
+                put("tap_result", tapResult)
+            }
+        }
+
+        val settleDelay = if (settleMs > 0) settleMs else 150L
+        delay(settleDelay)
+
+        val screenResult = readScreen()
+        return buildJsonObject {
+            put("success", true)
+            put("action", "tap_and_read")
+            put("tap_result", tapResult)
+            for ((key, value) in screenResult) {
+                if (key != "action") {
+                    put(key, value)
+                }
+            }
+        }
     }
 
     private fun findClickableParent(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
@@ -173,13 +312,13 @@ class CellClawAccessibility : AccessibilityService() {
         return successResult("type", "Typed '${text.take(50)}...'")
     }
 
-    // ── Swipe (for dating apps, card swiping, etc.) ──────────────────────
+    // ── Swipe ────────────────────────────────────────────────────────────
 
-    private fun handleSwipe(direction: String): JsonObject {
+    private suspend fun handleSwipe(direction: String): JsonObject {
         val centerX = screenWidth / 2f
         val centerY = screenHeight / 2f
-        val swipeDistance = screenWidth * 0.6f // 60% of screen width
-        val duration = 300L // Fast enough to register as swipe
+        val swipeDistance = screenWidth * 0.6f
+        val duration = 200L // Trimmed from 300ms to 200ms
 
         val (startX, startY, endX, endY) = when (direction) {
             "left" -> listOf(centerX + 100f, centerY, centerX - swipeDistance, centerY - 50f)
@@ -198,22 +337,30 @@ class CellClawAccessibility : AccessibilityService() {
             .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
             .build()
 
-        dispatchGesture(gesture, object : GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription?) {
+        return when (val state = dispatchGestureAwait(gesture)) {
+            is GestureResultState.Success -> {
                 Log.d(TAG, "Swipe $direction completed")
+                successResult("swipe", "Swiped $direction")
             }
-            override fun onCancelled(gestureDescription: GestureDescription?) {
-                Log.w(TAG, "Swipe $direction cancelled")
+            is GestureResultState.Cancelled -> {
+                Log.w(TAG, "Swipe $direction cancelled: ${state.reason}")
+                errorResult("Swipe $direction cancelled: ${state.reason}")
             }
-        }, null)
-
-        return successResult("swipe", "Swiped $direction")
+            is GestureResultState.Rejected -> {
+                Log.w(TAG, "Swipe $direction rejected: ${state.reason}")
+                errorResult("Swipe $direction rejected: ${state.reason}")
+            }
+            is GestureResultState.TimedOut -> {
+                Log.w(TAG, "Swipe $direction timed out: ${state.reason}")
+                errorResult("Swipe $direction timed out: ${state.reason}")
+            }
+        }
     }
 
     // ── Scroll ───────────────────────────────────────────────────────────
 
-    private fun handleScroll(direction: String): JsonObject {
-        val rootNode = rootInActiveWindow ?: return errorResult("No active window")
+    private suspend fun handleScroll(direction: String): JsonObject {
+        val rootNode = getActiveRootNodeWithRetry() ?: return errorResult("No active window")
         val scrollableNode = findScrollableNode(rootNode)
 
         if (scrollableNode != null) {
@@ -221,7 +368,6 @@ class CellClawAccessibility : AccessibilityService() {
                 "down" -> scrollableNode.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
                 "up" -> scrollableNode.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
                 "left", "right" -> {
-                    // For horizontal scroll, use gesture-based approach
                     return handleSwipe(direction)
                 }
             }
@@ -232,26 +378,31 @@ class CellClawAccessibility : AccessibilityService() {
         val centerX = screenWidth / 2f
         val scrollDist = screenHeight * 0.3f
         val (startY, endY) = when (direction) {
-            "down" -> Pair(centerX + scrollDist, centerX - scrollDist)
-            "up" -> Pair(centerX - scrollDist, centerX + scrollDist)
-            else -> return errorResult("Invalid scroll direction")
+            "down" -> Pair(screenHeight / 2f + scrollDist / 2, screenHeight / 2f - scrollDist / 2)
+            "up" -> Pair(screenHeight / 2f - scrollDist / 2, screenHeight / 2f + scrollDist / 2)
+            else -> return errorResult("Invalid scroll direction: $direction")
         }
 
         val path = Path().apply {
-            moveTo(centerX, screenHeight / 2f + if (direction == "down") scrollDist / 2 else -scrollDist / 2)
-            lineTo(centerX, screenHeight / 2f + if (direction == "down") -scrollDist / 2 else scrollDist / 2)
+            moveTo(centerX, startY)
+            lineTo(centerX, endY)
         }
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 500))
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 250)) // Trimmed from 500ms to 250ms
             .build()
-        dispatchGesture(gesture, null, null)
-        return successResult("scroll", "Scrolled $direction (gesture)")
+
+        return when (val state = dispatchGestureAwait(gesture)) {
+            is GestureResultState.Success -> successResult("scroll", "Scrolled $direction (gesture)")
+            is GestureResultState.Cancelled -> errorResult("Scroll $direction cancelled: ${state.reason}")
+            is GestureResultState.Rejected -> errorResult("Scroll $direction rejected: ${state.reason}")
+            is GestureResultState.TimedOut -> errorResult("Scroll $direction timed out: ${state.reason}")
+        }
     }
 
     // ── Read Screen ──────────────────────────────────────────────────────
 
-    private fun readScreen(): JsonObject {
-        val rootNode = rootInActiveWindow ?: return buildJsonObject {
+    private suspend fun readScreen(): JsonObject {
+        val rootNode = getActiveRootNodeWithRetry() ?: return buildJsonObject {
             put("error", "No active window")
             put("screen_width", screenWidth)
             put("screen_height", screenHeight)
@@ -309,8 +460,8 @@ class CellClawAccessibility : AccessibilityService() {
 
     // ── Find Element ─────────────────────────────────────────────────────
 
-    private fun findElement(text: String): JsonObject {
-        val rootNode = rootInActiveWindow ?: return errorResult("No active window")
+    private suspend fun findElement(text: String): JsonObject {
+        val rootNode = getActiveRootNodeWithRetry() ?: return errorResult("No active window")
         val nodes = rootNode.findAccessibilityNodeInfosByText(text)
 
         if (nodes.isNullOrEmpty()) return buildJsonObject {

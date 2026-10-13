@@ -90,17 +90,18 @@ class AppAutomateTool @Inject constructor(
 ) : Tool {
     override val name = "app.automate"
     override val description = """Automate actions in other apps using AccessibilityService.
-Actions: tap (by text or coordinates), type (into focused field), swipe (left/right/up/down for card swiping), scroll (up/down), back, home, find_element.
+Actions: tap (by text or coordinates), tap_and_read (tap and immediately inspect new screen in one turn), type (into focused field), swipe (left/right/up/down for card swiping), scroll (up/down), back, home, recents, find_element.
 Requires accessibility permission enabled in system settings."""
     override val parameters = ToolParameters(
         properties = mapOf(
             "action" to ParameterProperty("string", "Action to perform",
-                enum = listOf("tap", "type", "swipe", "scroll", "back", "home", "recents", "find_element")),
+                enum = listOf("tap", "tap_and_read", "type", "swipe", "scroll", "back", "home", "recents", "find_element")),
             "text" to ParameterProperty("string", "Text to type, or text of element to tap/find"),
             "x" to ParameterProperty("integer", "X coordinate for tap"),
             "y" to ParameterProperty("integer", "Y coordinate for tap"),
             "direction" to ParameterProperty("string", "Direction for swipe/scroll",
-                enum = listOf("left", "right", "up", "down"))
+                enum = listOf("left", "right", "up", "down")),
+            "settle_ms" to ParameterProperty("integer", "Optional post-tap settle delay in ms before reading screen for tap_and_read (default 150)")
         ),
         required = listOf("action")
     )
@@ -111,10 +112,10 @@ Requires accessibility permission enabled in system settings."""
             ?: return ToolResult.error("Missing 'action' parameter")
 
         return try {
-            // Hide overlay for tap/swipe so it doesn't interfere with gestures
-            if (action in listOf("tap", "swipe")) {
+            // Hide overlay for tap/tap_and_read/swipe so it doesn't interfere with gestures
+            if (action in listOf("tap", "tap_and_read", "swipe")) {
                 overlayVisibility.requestHide(500)
-                delay(100) // Wait for overlay to disappear
+                delay(50) // Reduced from 100ms
             }
 
             val (receiver, deferred) = AccessibilityBridge.createReceiver()
@@ -126,6 +127,7 @@ Requires accessibility permission enabled in system settings."""
                 params["x"]?.jsonPrimitive?.intOrNull?.let { putExtra("x", it) }
                 params["y"]?.jsonPrimitive?.intOrNull?.let { putExtra("y", it) }
                 params["direction"]?.jsonPrimitive?.contentOrNull?.let { putExtra("direction", it) }
+                params["settle_ms"]?.jsonPrimitive?.longOrNull?.let { putExtra("settle_ms", it) }
                 setPackage(context.packageName)
             }
             context.sendBroadcast(intent)

@@ -45,15 +45,19 @@ class EmailSendTool @Inject constructor(
             }
             context.startActivity(intent)
 
-            // Wait for Gmail to fully load
-            delay(3000)
-
-            // Tap the Send button via accessibility service
-            val sendResult = tapSendButton()
+            // Active polling loop: check and attempt tapping Send button up to 4 times (250ms intervals)
+            var sendResult = false
+            for (attempt in 1..4) {
+                delay(250)
+                if (tapSendButton()) {
+                    sendResult = true
+                    break
+                }
+            }
 
             if (sendResult) {
-                // Wait a moment then go back to CellClaw
-                delay(1000)
+                // Wait a moment then go back to CellClaw (trimmed from 1000ms to 150ms)
+                delay(150)
                 bringBackCellClaw()
 
                 ToolResult.success(buildJsonObject {
@@ -89,7 +93,7 @@ class EmailSendTool @Inject constructor(
             }
             context.sendBroadcast(intent)
 
-            val result = AccessibilityBridge.awaitResult(deferred, 5000)
+            val result = AccessibilityBridge.awaitResult(deferred, 1500) // Reduced from 5000 to 1500
             val success = result["success"]?.jsonPrimitive?.booleanOrNull ?: false
             if (success) return true
         }
