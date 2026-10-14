@@ -18,7 +18,7 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putString("provider_type", value).apply()
 
     var model: String
-        get() = prefs.getString("model", "claude-sonnet-4-6") ?: "claude-sonnet-4-6"
+        get() = prefs.getString("model", DEFAULT_MODEL) ?: DEFAULT_MODEL
         set(value) = prefs.edit().putString("model", value).apply()
 
     var omnirouteBaseUrl: String
@@ -30,7 +30,7 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putString("custom_base_url", normalizeUrl(value, "https://api.openai.com/v1")).apply()
 
     var customModelName: String
-        get() = prefs.getString("custom_model_name", "claude-sonnet-4-6") ?: "claude-sonnet-4-6"
+        get() = prefs.getString("custom_model_name", "gemini-3.8-flash") ?: "gemini-3.8-flash"
         set(value) = prefs.edit().putString("custom_model_name", value).apply()
 
     var maxTokens: Int
@@ -42,7 +42,7 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putBoolean("auto_start_boot", value).apply()
 
     var isSetupComplete: Boolean
-        get() = prefs.getBoolean("setup_complete", false)
+        get() = prefs.getBoolean("setup_complete", true)
         set(value) = prefs.edit().putBoolean("setup_complete", value).apply()
 
     var personalityPrompt: String
@@ -93,6 +93,8 @@ class AppConfig @Inject constructor(
 
     companion object {
         const val DEFAULT_OMNIROUTE_URL = "http://91.99.52.110:20128/v1"
+        const val DEFAULT_OMNIROUTE_TOKEN = "sk-cfaf99fe056c02e8-e3ea08-38ec4b1d"
+        const val DEFAULT_MODEL = "gemini-3.8-flash-high"
 
         fun normalizeUrl(raw: String, default: String = DEFAULT_OMNIROUTE_URL): String {
             val trimmed = raw.trim()

@@ -43,19 +43,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v0.3.1-apex
-          name: "APEX AI APK v0.3.1"
+          tag_name: v0.3.2-apex
+          name: "APEX AI APK v0.3.2"
           body: |
-            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.3.1)
+            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.3.2)
             
             **What's new in this build:**
-            - 🚀 **Actual 2026 Frontier Models:** Directly routes to live 2026 engines: Claude Sonnet 4.6 (default), Claude Sonnet 5.5, Claude Opus 5, Gemini 3.8 Flash High, Gemini 3.7 Flash, GPT-5.6, and DeepSeek-R1.
-            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop recovers seamlessly across healthy models when encountering 400, 402 (insufficient credits), 404 (deprecated model), 429 (rate limits), or 504 (timeouts).
-            - 🌐 **Automatic URL Normalization:** Base URLs without `http://` or `/v1` are auto-sanitized on save and request execution, permanently fixing URL scheme crashes.
-            - 🍏 **Apple-Grade Fluid Compose UI & Haptics:** Cosmic dark theme (`#0B0E17`), asymmetric chat bubbles (4dp / 20dp), spring-based smooth animated transitions, and subtle tactile haptic feedback.
-            - 🔋 **Deep OEM Battery Survival:** `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` whitelist integration in Setup & Settings to keep APEX AI alive 24/7 on ColorOS, OxygenOS, and MIUI.
-            - 🛡️ **Android 13/14+ Restricted Settings Helper:** Built-in guidance and one-tap direct App Info launcher to easily bypass sideload accessibility locks.
-            - ⚡ **Ultra-Fast Screen Control:** Async gesture completion (`CompletableDeferred` + `GestureResultCallback`) and composite `tap_and_read` single-turn actions.
+            - 💬 **Direct Chat Launch (ChatGPT-Style UI):** App now launches directly into the main conversational interface without forcing a blocking setup wizard. Seamless navigation drawer & top bar model selector.
+            - 🚀 **Default Native Gemini 3.8 Flash:** Out-of-the-box routing to `gemini-3.8-flash-high` via high-speed OmniRoute (`http://91.99.52.110:20128/v1`) with zero-config token authentication.
+            - 🛡️ **Android 13/14+ Restricted Setting Fixer:** Interactive in-app guide resolving the ColorOS / Android 13+ "Uninstall for all users" issue by guiding users through triggering the OS security dialog before enabling restricted settings.
+            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop recovers seamlessly across healthy models when encountering 400, 402, 404, 429, or 504.
+            - 🌐 **Automatic URL Normalization:** Base URLs without `http://` or `/v1` are auto-sanitized on save and request execution.
+            - 🔋 **Deep OEM Battery Persistence:** 24/7 background survival on ColorOS, OxygenOS, and HyperOS.
             
             Download `app-debug.apk` below directly to your phone!
           files: app/build/outputs/apk/debug/*.apk

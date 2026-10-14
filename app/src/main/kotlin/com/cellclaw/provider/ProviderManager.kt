@@ -49,22 +49,22 @@ class ProviderManager @Inject constructor(
 
     /** Get all available provider types */
     fun availableProviders(): List<ProviderInfo> = listOf(
-        ProviderInfo("omniroute", "OmniRoute (Router / Proxy)", "claude-sonnet-4-6",
+        ProviderInfo("omniroute", "OmniRoute (Router / Proxy)", "gemini-3.8-flash-high",
             hasKey("omniroute"),
-            models = listOf("claude-sonnet-4-6", "claude-sonnet-5-5", "claude-opus-5", "gemini-3.8-flash-high", "gemini-3.7-flash-medium", "deepseek-r1")),
+            models = listOf("gemini-3.8-flash-high", "gemini-3.7-flash-medium", "claude-sonnet-4-6", "claude-sonnet-5-5", "claude-opus-5", "deepseek-r1")),
+        ProviderInfo("gemini", "Google (Gemini)", "gemini-3.8-flash",
+            secureKeyStore.hasApiKey("gemini"),
+            models = listOf("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.1-pro", "gemini-flash-lite-latest")),
         ProviderInfo("anthropic", "Anthropic (Claude)", "claude-sonnet-4-6",
             secureKeyStore.hasApiKey("anthropic"),
             models = listOf("claude-sonnet-4-6", "claude-opus-5", "claude-haiku-4-5")),
         ProviderInfo("openai", "OpenAI (GPT)", "gpt-5.6",
             secureKeyStore.hasApiKey("openai"),
             models = listOf("gpt-5.6", "gpt-6", "gpt-5-mini")),
-        ProviderInfo("gemini", "Google (Gemini)", "gemini-3.8-flash",
-            secureKeyStore.hasApiKey("gemini"),
-            models = listOf("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.1-pro", "gemini-flash-lite-latest")),
-        ProviderInfo("openrouter", "OpenRouter", "anthropic/claude-sonnet-4-6",
+        ProviderInfo("openrouter", "OpenRouter", "google/gemini-3.8-flash",
             secureKeyStore.hasApiKey("openrouter"),
-            models = listOf("anthropic/claude-sonnet-4-6", "google/gemini-3.8-flash", "deepseek/deepseek-r1")),
-        ProviderInfo("custom", "Custom Provider (OpenAI-Compatible)", "custom-model",
+            models = listOf("google/gemini-3.8-flash", "anthropic/claude-sonnet-4-6", "deepseek/deepseek-r1")),
+        ProviderInfo("custom", "Custom Provider (OpenAI-Compatible)", "gemini-3.8-flash",
             hasKey("custom"),
             models = emptyList())
     )
@@ -88,8 +88,11 @@ class ProviderManager @Inject constructor(
     }
 
     private fun configureProvider(type: String, provider: Provider) {
-        val apiKey = secureKeyStore.getApiKey(type) ?: ""
-        val model = appConfig.model
+        val apiKey = secureKeyStore.getApiKey(type)?.takeIf { it.isNotBlank() }
+            ?: if (type == "omniroute") AppConfig.DEFAULT_OMNIROUTE_TOKEN else ""
+        val model = appConfig.model.ifBlank {
+            if (type == "omniroute") "gemini-3.8-flash-high" else "gemini-3.8-flash"
+        }
         when (provider) {
             is AnthropicProvider -> provider.configure(apiKey, model)
             is OpenAIProvider -> provider.configure(apiKey, model)
@@ -100,7 +103,7 @@ class ProviderManager @Inject constructor(
                 val activeModel = if (type == "custom" && appConfig.customModelName.isNotBlank()) {
                     appConfig.customModelName
                 } else {
-                    model.ifBlank { "claude-sonnet-4-6" }
+                    model.ifBlank { "gemini-3.8-flash-high" }
                 }
                 provider.configure(
                     baseUrl = baseUrl,

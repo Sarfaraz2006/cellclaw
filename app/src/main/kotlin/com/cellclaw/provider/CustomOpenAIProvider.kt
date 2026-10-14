@@ -55,7 +55,10 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
         providerName: String = this._name
     ) {
         if (baseUrl.isNotBlank()) this.baseUrl = baseUrl.trim()
-        this.apiKey = apiKey.trim()
+        val key = apiKey.trim().ifBlank {
+            if (providerName == "omniroute") AppConfig.DEFAULT_OMNIROUTE_TOKEN else ""
+        }
+        this.apiKey = key
         if (model.isNotBlank()) this.model = model.trim()
         this._name = providerName
     }
@@ -75,7 +78,7 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     override suspend fun complete(request: CompletionRequest): CompletionResponse =
         withContext(Dispatchers.IO) {
             val url = getChatCompletionsUrl()
-            val fallbackModels = listOf("claude-sonnet-4-6", "claude-sonnet-5-5", "claude-opus-5", "gemini-3.8-flash-high", "gemini-flash-lite-latest")
+            val fallbackModels = listOf("gemini-3.8-flash-high", "gemini-3.7-flash-medium", "claude-sonnet-4-6", "claude-sonnet-5-5", "claude-opus-5", "gemini-flash-lite-latest")
 
             val currentModel = this@CustomOpenAIProvider.model
             val modelsToTry = mutableListOf(currentModel)
@@ -95,8 +98,11 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
                         .addHeader("Content-Type", "application/json")
                         .post(body.toRequestBody("application/json".toMediaType()))
 
-                    if (apiKey.isNotBlank()) {
-                        requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+                    val tokenToUse = apiKey.ifBlank {
+                        if (_name == "omniroute") AppConfig.DEFAULT_OMNIROUTE_TOKEN else ""
+                    }
+                    if (tokenToUse.isNotBlank()) {
+                        requestBuilder.addHeader("Authorization", "Bearer $tokenToUse")
                     }
 
                     val httpRequest = requestBuilder.build()
@@ -391,6 +397,6 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     }
 
     companion object {
-        const val DEFAULT_MODEL = "claude-sonnet-4-6"
+        const val DEFAULT_MODEL = "gemini-3.8-flash-high"
     }
 }
