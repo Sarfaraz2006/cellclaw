@@ -995,57 +995,6 @@ fun ChatBubble(message: ChatMessage) {
     }
 }
 
-fun openAccessibilitySettings(context: Context) {
-    val cn = ComponentName(context, "com.cellclaw.service.CellClawAccessibility")
-    var opened = false
-    if (Build.VERSION.SDK_INT >= 36) {
-        try {
-            context.startActivity(
-                Intent("android.settings.ACCESSIBILITY_DETAIL_SETTINGS").apply {
-                    putExtra(Intent.EXTRA_COMPONENT_NAME, cn.flattenToString())
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
-            opened = true
-        } catch (_: Exception) {}
-    }
-    if (!opened) {
-        try {
-            context.startActivity(
-                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        } catch (_: Exception) {}
-    }
-}
-
-fun openAppInfo(context: Context) {
-    try {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.parse("package:${context.packageName}")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
-    } catch (_: Exception) {}
-}
-
-fun requestIgnoreBatteryOptimization(context: Context) {
-    try {
-        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = Uri.parse("package:${context.packageName}")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        try {
-            val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(fallback)
-        } catch (_: Exception) {}
-    }
-}
-
 data class ChatMessage(
     val id: Long,
     val role: String,

@@ -521,7 +521,7 @@ private fun PermissionRow(
     }
 }
 
-private fun openAccessibilitySettings(context: android.content.Context) {
+fun openAccessibilitySettings(context: android.content.Context) {
     val componentName = ComponentName(context, "com.cellclaw.service.CellClawAccessibility")
 
     // Try direct detail page first (AOSP API 36+), catch if OEM doesn't support it
@@ -545,7 +545,7 @@ private fun openAccessibilitySettings(context: android.content.Context) {
     )
 }
 
-private fun openAppDetails(context: android.content.Context) {
+fun openAppDetails(context: android.content.Context) {
     try {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.parse("package:${context.packageName}")
@@ -554,6 +554,8 @@ private fun openAppDetails(context: android.content.Context) {
         context.startActivity(intent)
     } catch (_: Exception) {}
 }
+
+fun openAppInfo(context: android.content.Context) = openAppDetails(context)
 
 private fun isNotificationListenerEnabled(context: android.content.Context): Boolean {
     val expectedComponent = ComponentName(context, "com.cellclaw.service.CellClawNotificationListener")
@@ -582,7 +584,7 @@ private fun isBatteryOptimizationIgnored(context: android.content.Context): Bool
     return pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
 }
 
-private fun requestIgnoreBatteryOptimization(context: android.content.Context) {
+fun requestIgnoreBatteryOptimization(context: android.content.Context) {
     try {
         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
             data = Uri.parse("package:${context.packageName}")
