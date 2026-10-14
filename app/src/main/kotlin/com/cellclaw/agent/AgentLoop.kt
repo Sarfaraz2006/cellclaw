@@ -288,6 +288,15 @@ class AgentLoop @Inject constructor(
         }
     }
 
+    fun clearHistory() {
+        currentJob?.cancel()
+        _state.value = AgentState.IDLE
+        conversationHistory.clear()
+        scope.launch {
+            conversationStore.clearCurrentConversation()
+        }
+    }
+
     companion object {
         private const val TAG = "AgentLoop"
     }

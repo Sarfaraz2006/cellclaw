@@ -36,13 +36,11 @@ class MainActivity : ComponentActivity() {
         //   --es provider "openrouter" --es api_key "sk-or-..." --es model "google/gemini-2.5-flash"
         intent?.let { handleSetupIntent(it) }
 
-        // Start foreground service to maintain network access when backgrounded
-        if (appConfig.isSetupComplete) {
-            startService()
-            // Start overlay if enabled and permission granted
-            if (appConfig.overlayEnabled && Settings.canDrawOverlays(this)) {
-                startForegroundService(Intent(this, OverlayService::class.java))
-            }
+        // Always start background service to maintain network access & assistant capabilities
+        startService()
+        // Start overlay if enabled and permission granted
+        if (appConfig.overlayEnabled && Settings.canDrawOverlays(this)) {
+            startForegroundService(Intent(this, OverlayService::class.java))
         }
 
         val pendingMessage = intent?.getStringExtra("message")
@@ -54,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val startDest = if (appConfig.isSetupComplete) "chat" else "setup"
+                    val startDest = "chat"
 
                     NavHost(navController = navController, startDestination = startDest) {
                         composable("setup") {

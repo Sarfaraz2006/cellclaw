@@ -52,6 +52,7 @@ fun SettingsScreen(
     val maxIterations by viewModel.maxIterations.collectAsState()
     val wakeWordEnabled by viewModel.wakeWordEnabled.collectAsState()
     val context = LocalContext.current
+    var showRestrictedDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -499,27 +500,47 @@ fun SettingsScreen(
                             )
                         }
                         TextButton(onClick = {
-                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            })
+                            openAccessibilitySettings(context)
                         }) {
                             Text("Open Settings")
                         }
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            try {
-                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (!a11yEnabled) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    "ColorOS / Android 13+ 'Restricted Setting' Fix",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "If App Info only displays 'Uninstall for all users', you must first attempt to enable APEX AI in Accessibility to trigger the OS restriction dialog, then allow restricted settings.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { showRestrictedDialog = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Open 3-Step Fix Guide")
                                 }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        },
+                            }
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { openAppInfo(context) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Open App Info (Allow Restricted Settings)")
+                        Text("Open App Info (3 Dots ⋮ Menu)")
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -543,20 +564,7 @@ fun SettingsScreen(
                             )
                         }
                         TextButton(onClick = {
-                            try {
-                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                try {
-                                    val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    context.startActivity(fallback)
-                                } catch (_: Exception) {}
-                            }
+                            requestIgnoreBatteryOptimization(context)
                         }) {
                             Text(if (batteryIgnored) "Check" else "Exempt")
                         }
@@ -564,6 +572,14 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showRestrictedDialog) {
+        RestrictedSettingsDialog(
+            onDismiss = { showRestrictedDialog = false },
+            onOpenAccessibility = { openAccessibilitySettings(context) },
+            onOpenAppInfo = { openAppInfo(context) }
+        )
     }
 }
 

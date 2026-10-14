@@ -10,8 +10,8 @@ import com.cellclaw.approval.ApprovalQueue
 import com.cellclaw.approval.ApprovalRequest
 import com.cellclaw.approval.ApprovalResult
 import com.cellclaw.config.AppConfig
-import com.cellclaw.config.SecureKeyStore
-import com.cellclaw.provider.AnthropicProvider
+import com.cellclaw.memory.ConversationStore
+import com.cellclaw.provider.ProviderManager
 import com.cellclaw.ui.screens.ChatMessage
 import com.cellclaw.voice.VoiceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,8 +26,8 @@ class ChatViewModel @Inject constructor(
     private val agentLoop: AgentLoop,
     private val approvalQueue: ApprovalQueue,
     private val appConfig: AppConfig,
-    private val secureKeyStore: SecureKeyStore,
-    private val anthropicProvider: AnthropicProvider,
+    private val providerManager: ProviderManager,
+    private val conversationStore: ConversationStore,
     private val voiceManager: VoiceManager
 ) : ViewModel() {
 
@@ -42,13 +42,19 @@ class ChatViewModel @Inject constructor(
 
     val pendingApprovals: StateFlow<List<ApprovalRequest>> = approvalQueue.requests
 
+    private val _currentModel = MutableStateFlow(appConfig.model)
+    val currentModel: StateFlow<String> = _currentModel.asStateFlow()
+
+    private val _activeProvider = MutableStateFlow(providerManager.activeType())
+    val activeProvider: StateFlow<String> = _activeProvider.asStateFlow()
+
     private var messageCounter = 0L
 
     val isListening: StateFlow<Boolean> = voiceManager.isListening
     val voiceEnabled: Boolean get() = appConfig.voiceEnabled
 
     init {
-        configureProvider()
+        loadHistory()
         observeAgentEvents()
         observeAgentState()
         observeVoiceInput()
@@ -57,9 +63,40 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun configureProvider() {
-        val apiKey = secureKeyStore.getApiKey("anthropic") ?: return
-        anthropicProvider.configure(apiKey, appConfig.model)
+    private fun loadHistory() {
+        viewModelScope.launch {
+            agentLoop.loadHistory()
+            val stored = conversationStore.getRecentMessages(50)
+            if (stored.isNotEmpty()) {
+                _messages.value = stored.map {
+                    ChatMessage(
+                        id = it.id,
+                        role = it.role,
+                        content = it.content,
+                        timestamp = it.timestamp
+                    )
+                }
+                messageCounter = (stored.maxOfOrNull { it.id } ?: 0L)
+            }
+        }
+    }
+
+    fun startNewChat() {
+        agentLoop.clearHistory()
+        _messages.value = emptyList()
+        _thinkingText.value = null
+    }
+
+    fun setModel(newModel: String) {
+        appConfig.model = newModel
+        _currentModel.value = newModel
+    }
+
+    fun getAvailableModels(): List<String> {
+        val activeType = providerManager.activeType()
+        val providerInfo = providerManager.availableProviders().firstOrNull { it.type == activeType }
+        val models = providerInfo?.models
+        return if (!models.isNullOrEmpty()) models else listOf(appConfig.model)
     }
 
     private fun observeAgentEvents() {

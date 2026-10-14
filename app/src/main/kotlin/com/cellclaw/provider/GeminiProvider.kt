@@ -23,6 +23,8 @@ class GeminiProvider @Inject constructor() : Provider {
 
     /** Fallback models to try when the primary model returns 404 */
     private val fallbackModels = listOf(
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
         "gemini-3-flash-preview",
         "gemini-3.1-pro-preview",
         "gemini-2.5-flash",
@@ -315,6 +317,6 @@ class GeminiProvider @Inject constructor() : Provider {
     companion object {
         private const val TAG = "GeminiProvider"
         const val API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-        const val DEFAULT_MODEL = "gemini-3-flash-preview"
+        const val DEFAULT_MODEL = "gemini-3.8-flash"
     }
 }

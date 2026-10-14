@@ -18,7 +18,14 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putString("provider_type", value).apply()
 
     var model: String
-        get() = prefs.getString("model", DEFAULT_MODEL) ?: DEFAULT_MODEL
+        get() {
+            val saved = prefs.getString("model", null)
+            if (saved.isNullOrBlank() || saved.contains("claude-sonnet-4-6") || saved.contains("claude-3-5")) {
+                prefs.edit().putString("model", DEFAULT_MODEL).apply()
+                return DEFAULT_MODEL
+            }
+            return saved
+        }
         set(value) = prefs.edit().putString("model", value).apply()
 
     var omnirouteBaseUrl: String
@@ -42,7 +49,7 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putBoolean("auto_start_boot", value).apply()
 
     var isSetupComplete: Boolean
-        get() = prefs.getBoolean("setup_complete", true)
+        get() = true // Direct chat entry; never block user with setup wizard
         set(value) = prefs.edit().putBoolean("setup_complete", value).apply()
 
     var personalityPrompt: String

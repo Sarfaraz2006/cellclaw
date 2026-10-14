@@ -234,6 +234,6 @@ class OpenRouterProvider @Inject constructor() : Provider {
 
     companion object {
         const val API_URL = "https://openrouter.ai/api/v1/chat/completions"
-        const val DEFAULT_MODEL = "google/gemini-2.5-flash"
+        const val DEFAULT_MODEL = "google/gemini-3.8-flash"
     }
 }
