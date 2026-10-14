@@ -18,7 +18,7 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putString("provider_type", value).apply()
 
     var model: String
-        get() = prefs.getString("model", "claude-3-7-sonnet") ?: "claude-3-7-sonnet"
+        get() = prefs.getString("model", "claude-sonnet-4-6") ?: "claude-sonnet-4-6"
         set(value) = prefs.edit().putString("model", value).apply()
 
     var omnirouteBaseUrl: String
@@ -30,7 +30,7 @@ class AppConfig @Inject constructor(
         set(value) = prefs.edit().putString("custom_base_url", normalizeUrl(value, "https://api.openai.com/v1")).apply()
 
     var customModelName: String
-        get() = prefs.getString("custom_model_name", "claude-3-7-sonnet") ?: "claude-3-7-sonnet"
+        get() = prefs.getString("custom_model_name", "claude-sonnet-4-6") ?: "claude-sonnet-4-6"
         set(value) = prefs.edit().putString("custom_model_name", value).apply()
 
     var maxTokens: Int

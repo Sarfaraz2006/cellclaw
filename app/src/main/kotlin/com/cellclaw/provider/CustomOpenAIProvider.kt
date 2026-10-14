@@ -75,7 +75,7 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     override suspend fun complete(request: CompletionRequest): CompletionResponse =
         withContext(Dispatchers.IO) {
             val url = getChatCompletionsUrl()
-            val fallbackModels = listOf("claude-3-7-sonnet", "claude-3-5-sonnet", "gemini-flash-lite-latest")
+            val fallbackModels = listOf("claude-sonnet-4-6", "claude-sonnet-5-5", "claude-opus-5", "gemini-3.8-flash-high", "gemini-flash-lite-latest")
 
             val currentModel = this@CustomOpenAIProvider.model
             val modelsToTry = mutableListOf(currentModel)
@@ -391,6 +391,6 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     }
 
     companion object {
-        const val DEFAULT_MODEL = "claude-3-7-sonnet"
+        const val DEFAULT_MODEL = "claude-sonnet-4-6"
     }
 }

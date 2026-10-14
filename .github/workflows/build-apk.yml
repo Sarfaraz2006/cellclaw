@@ -43,14 +43,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v0.3.0-apex
-          name: "APEX AI APK v0.3.0"
+          tag_name: v0.3.1-apex
+          name: "APEX AI APK v0.3.1"
           body: |
-            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.3.0)
+            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.3.1)
             
             **What's new in this build:**
-            - 🧠 **Present-Time 2026 AI Model Catalog:** Verified live models including Claude 3.7 Sonnet (default), Claude 3.5 Sonnet, Gemini Flash Lite Latest, Sonnet, Gemini 3.1 Pro, GPT-4o, and DeepSeek-R1. Deprecated models eliminated.
-            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop recovers seamlessly across healthy models when encountering 400, 402 (insufficient credits), 404 (deprecated model), 429 (rate limits), or 504 (timeouts) without dumping raw JSON errors.
+            - 🚀 **Actual 2026 Frontier Models:** Directly routes to live 2026 engines: Claude Sonnet 4.6 (default), Claude Sonnet 5.5, Claude Opus 5, Gemini 3.8 Flash High, Gemini 3.7 Flash, GPT-5.6, and DeepSeek-R1.
+            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop recovers seamlessly across healthy models when encountering 400, 402 (insufficient credits), 404 (deprecated model), 429 (rate limits), or 504 (timeouts).
             - 🌐 **Automatic URL Normalization:** Base URLs without `http://` or `/v1` are auto-sanitized on save and request execution, permanently fixing URL scheme crashes.
             - 🍏 **Apple-Grade Fluid Compose UI & Haptics:** Cosmic dark theme (`#0B0E17`), asymmetric chat bubbles (4dp / 20dp), spring-based smooth animated transitions, and subtle tactile haptic feedback.
             - 🔋 **Deep OEM Battery Survival:** `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` whitelist integration in Setup & Settings to keep APEX AI alive 24/7 on ColorOS, OxygenOS, and MIUI.
