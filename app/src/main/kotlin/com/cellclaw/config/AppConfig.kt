@@ -94,7 +94,7 @@ class AppConfig @Inject constructor(
     companion object {
         const val DEFAULT_OMNIROUTE_URL = "http://91.99.52.110:20128/v1"
 
-        fun normalizeUrl(raw: String, default: String): String {
+        fun normalizeUrl(raw: String, default: String = DEFAULT_OMNIROUTE_URL): String {
             val trimmed = raw.trim()
             if (trimmed.isBlank() || trimmed == "http://" || trimmed == "https://") return default
             var url = trimmed
