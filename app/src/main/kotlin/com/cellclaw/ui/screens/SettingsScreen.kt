@@ -521,6 +521,46 @@ fun SettingsScreen(
                     ) {
                         Text("Open App Info (Allow Restricted Settings)")
                     }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    val pm = remember { context.getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager }
+                    val batteryIgnored = remember {
+                        pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Background Battery Survival", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                if (batteryIgnored) "Exempted (Protected from OEM task killer)" else "Not Exempted (May be stopped by OS)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (batteryIgnored) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = {
+                            try {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(fallback)
+                                } catch (_: Exception) {}
+                            }
+                        }) {
+                            Text(if (batteryIgnored) "Check" else "Exempt")
+                        }
+                    }
                 }
             }
         }

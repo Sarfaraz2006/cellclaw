@@ -14,23 +14,23 @@ class AppConfig @Inject constructor(
         context.getSharedPreferences("cellclaw_config", Context.MODE_PRIVATE)
 
     var providerType: String
-        get() = prefs.getString("provider_type", "anthropic") ?: "anthropic"
+        get() = prefs.getString("provider_type", "omniroute") ?: "omniroute"
         set(value) = prefs.edit().putString("provider_type", value).apply()
 
     var model: String
-        get() = prefs.getString("model", "claude-sonnet-4-6") ?: "claude-sonnet-4-6"
+        get() = prefs.getString("model", "claude-3-7-sonnet") ?: "claude-3-7-sonnet"
         set(value) = prefs.edit().putString("model", value).apply()
 
     var omnirouteBaseUrl: String
-        get() = prefs.getString("omniroute_base_url", "http://10.0.2.2:20128/v1") ?: "http://10.0.2.2:20128/v1"
-        set(value) = prefs.edit().putString("omniroute_base_url", value).apply()
+        get() = normalizeUrl(prefs.getString("omniroute_base_url", DEFAULT_OMNIROUTE_URL) ?: DEFAULT_OMNIROUTE_URL, DEFAULT_OMNIROUTE_URL)
+        set(value) = prefs.edit().putString("omniroute_base_url", normalizeUrl(value, DEFAULT_OMNIROUTE_URL)).apply()
 
     var customBaseUrl: String
-        get() = prefs.getString("custom_base_url", "https://api.openai.com/v1") ?: "https://api.openai.com/v1"
-        set(value) = prefs.edit().putString("custom_base_url", value).apply()
+        get() = normalizeUrl(prefs.getString("custom_base_url", "https://api.openai.com/v1") ?: "https://api.openai.com/v1", "https://api.openai.com/v1")
+        set(value) = prefs.edit().putString("custom_base_url", normalizeUrl(value, "https://api.openai.com/v1")).apply()
 
     var customModelName: String
-        get() = prefs.getString("custom_model_name", "gemini-2.5-flash") ?: "gemini-2.5-flash"
+        get() = prefs.getString("custom_model_name", "claude-3-7-sonnet") ?: "claude-3-7-sonnet"
         set(value) = prefs.edit().putString("custom_model_name", value).apply()
 
     var maxTokens: Int
@@ -90,4 +90,22 @@ class AppConfig @Inject constructor(
     var heartbeatAlwaysPoll: Boolean
         get() = prefs.getBoolean("heartbeat_always_poll", false)
         set(value) = prefs.edit().putBoolean("heartbeat_always_poll", value).apply()
+
+    companion object {
+        const val DEFAULT_OMNIROUTE_URL = "http://91.99.52.110:20128/v1"
+
+        fun normalizeUrl(raw: String, default: String): String {
+            val trimmed = raw.trim()
+            if (trimmed.isBlank() || trimmed == "http://" || trimmed == "https://") return default
+            var url = trimmed
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "http://$url"
+            }
+            url = url.trimEnd('/')
+            if (!url.endsWith("/v1") && !url.endsWith("/chat/completions")) {
+                url = "$url/v1"
+            }
+            return url
+        }
+    }
 }

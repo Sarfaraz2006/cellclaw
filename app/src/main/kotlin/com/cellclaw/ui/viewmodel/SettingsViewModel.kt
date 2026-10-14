@@ -109,13 +109,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setOmnirouteBaseUrl(url: String) {
-        appConfig.omnirouteBaseUrl = url
-        _omnirouteBaseUrl.value = url
+        val normalized = AppConfig.normalizeUrl(url)
+        appConfig.omnirouteBaseUrl = normalized
+        _omnirouteBaseUrl.value = normalized
     }
 
     fun setCustomBaseUrl(url: String) {
-        appConfig.customBaseUrl = url
-        _customBaseUrl.value = url
+        val normalized = AppConfig.normalizeUrl(url)
+        appConfig.customBaseUrl = normalized
+        _customBaseUrl.value = normalized
     }
 
     fun setCustomModelName(modelName: String) {

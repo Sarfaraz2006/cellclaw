@@ -340,12 +340,16 @@ fun SetupScreen(
                     var notifListenerGranted by remember {
                         mutableStateOf(isNotificationListenerEnabled(context))
                     }
+                    var batteryOptIgnored by remember {
+                        mutableStateOf(isBatteryOptimizationIgnored(context))
+                    }
                     DisposableEffect(lifecycleOwner) {
                         val observer = LifecycleEventObserver { _, event ->
                             if (event == Lifecycle.Event.ON_RESUME) {
                                 overlayGranted = Settings.canDrawOverlays(context)
                                 accessibilityGranted = isAccessibilityEnabled(context)
                                 notifListenerGranted = isNotificationListenerEnabled(context)
+                                batteryOptIgnored = isBatteryOptimizationIgnored(context)
                             }
                         }
                         lifecycleOwner.lifecycle.addObserver(observer)
@@ -434,6 +438,16 @@ fun SetupScreen(
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Background persistence / Battery optimization
+                    PermissionRow(
+                        title = "Background Persistence (OEM / ColorOS)",
+                        description = "Exempts APEX AI from aggressive OEM background task killing",
+                        granted = batteryOptIgnored,
+                        onClick = { requestIgnoreBatteryOptimization(context) }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -560,6 +574,28 @@ private fun isAccessibilityEnabled(context: android.content.Context): Boolean {
     ) ?: return false
     return enabledServices.split(':').any {
         ComponentName.unflattenFromString(it) == expectedComponent
+    }
+}
+
+private fun isBatteryOptimizationIgnored(context: android.content.Context): Boolean {
+    val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager
+    return pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
+}
+
+private fun requestIgnoreBatteryOptimization(context: android.content.Context) {
+    try {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(fallback)
+        } catch (_: Exception) {}
     }
 }
 

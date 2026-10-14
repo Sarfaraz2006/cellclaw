@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +30,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,6 +65,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     // Poll accessibility service status via system API (works cross-process)
     var accessibilityConnected by remember { mutableStateOf(false) }
@@ -80,7 +85,7 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("CellClaw") },
+                title = { Text("APEX AI") },
                 actions = {
                     if (pendingApprovals.isNotEmpty()) {
                         BadgedBox(badge = {
@@ -251,7 +256,9 @@ fun ChatScreen(
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(messages, key = { it.id }) { message ->
-                    ChatBubble(message = message)
+                    Box(modifier = Modifier.animateItem()) {
+                        ChatBubble(message = message)
+                    }
                 }
             }
 
@@ -424,7 +431,7 @@ fun ChatScreen(
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
                     placeholder = {
-                        Text(if (isAgentRunning) "Send instructions..." else "Message CellClaw...")
+                        Text(if (isAgentRunning) "Send instructions..." else "Message APEX AI...")
                     },
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 4
@@ -433,6 +440,7 @@ fun ChatScreen(
                 if (voiceEnabled) {
                     IconButton(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             if (isListening) {
                                 viewModel.stopVoiceInput()
                             } else {
@@ -451,6 +459,7 @@ fun ChatScreen(
                 FilledIconButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             viewModel.sendMessage(inputText.trim())
                             inputText = ""
                             scope.launch {
@@ -476,12 +485,21 @@ fun ChatBubble(message: ChatMessage) {
     val bgColor = if (isUser) {
         MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        Color(0xFF131826)
     }
     val textColor = if (isUser) {
         MaterialTheme.colorScheme.onPrimary
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    // Apple-style asymmetric bubble shape:
+    // User: 4dp on top-right, 20dp on other corners
+    // Assistant: 4dp on top-left, 20dp on other corners
+    val bubbleShape = if (isUser) {
+        RoundedCornerShape(topStart = 20.dp, topEnd = 4.dp, bottomEnd = 20.dp, bottomStart = 20.dp)
+    } else {
+        RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 20.dp)
     }
 
     Box(
@@ -491,23 +509,27 @@ fun ChatBubble(message: ChatMessage) {
         Column(
             modifier = Modifier
                 .widthIn(max = 320.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(bubbleShape)
+                .then(
+                    if (!isUser) Modifier.border(0.75.dp, Color(0xFF2A364F), bubbleShape)
+                    else Modifier
+                )
                 .background(bgColor)
-                .padding(12.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             if (message.toolName != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Build,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = textColor.copy(alpha = 0.7f)
+                        modifier = Modifier.size(13.dp),
+                        tint = if (isUser) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = message.toolName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = textColor.copy(alpha = 0.7f)
+                        color = if (isUser) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
                     )
                 }
                 Spacer(Modifier.height(4.dp))

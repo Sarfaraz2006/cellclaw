@@ -41,11 +41,11 @@ class SetupViewModel @Inject constructor(
     }
 
     fun saveOmnirouteBaseUrl(url: String) {
-        appConfig.omnirouteBaseUrl = url
+        appConfig.omnirouteBaseUrl = AppConfig.normalizeUrl(url)
     }
 
     fun saveCustomBaseUrl(url: String) {
-        appConfig.customBaseUrl = url
+        appConfig.customBaseUrl = AppConfig.normalizeUrl(url)
     }
 
     fun selectProfile(profile: PermissionProfile) {

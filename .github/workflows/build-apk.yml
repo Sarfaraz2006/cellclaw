@@ -43,17 +43,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v0.2.0-apex
-          name: "APEX AI APK v0.2.0"
+          tag_name: v0.3.0-apex
+          name: "APEX AI APK v0.3.0"
           body: |
-            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.2.0)
+            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.3.0)
             
             **What's new in this build:**
-            - 🚀 **Personalized Rebrand to APEX AI:** Elite autonomous assistant identity, custom cyber apex icon, and sleek visual theme.
+            - 🧠 **Present-Time 2026 AI Model Catalog:** Verified live models including Claude 3.7 Sonnet (default), Claude 3.5 Sonnet, Gemini Flash Lite Latest, Sonnet, Gemini 3.1 Pro, GPT-4o, and DeepSeek-R1. Deprecated models eliminated.
+            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop recovers seamlessly across healthy models when encountering 400, 402 (insufficient credits), 404 (deprecated model), 429 (rate limits), or 504 (timeouts) without dumping raw JSON errors.
+            - 🌐 **Automatic URL Normalization:** Base URLs without `http://` or `/v1` are auto-sanitized on save and request execution, permanently fixing URL scheme crashes.
+            - 🍏 **Apple-Grade Fluid Compose UI & Haptics:** Cosmic dark theme (`#0B0E17`), asymmetric chat bubbles (4dp / 20dp), spring-based smooth animated transitions, and subtle tactile haptic feedback.
+            - 🔋 **Deep OEM Battery Survival:** `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` whitelist integration in Setup & Settings to keep APEX AI alive 24/7 on ColorOS, OxygenOS, and MIUI.
             - 🛡️ **Android 13/14+ Restricted Settings Helper:** Built-in guidance and one-tap direct App Info launcher to easily bypass sideload accessibility locks.
             - ⚡ **Ultra-Fast Screen Control:** Async gesture completion (`CompletableDeferred` + `GestureResultCallback`) and composite `tap_and_read` single-turn actions.
-            - 🎙️ **Zero-Latency Voice Engine:** 120ms turnaround latency between TTS completion and recognition activation.
-            - 🦾 **Universal AI Core:** Direct OmniRoute proxy, Gemini, Claude, and OpenAI support.
             
             Download `app-debug.apk` below directly to your phone!
           files: app/build/outputs/apk/debug/*.apk

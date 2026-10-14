@@ -1,5 +1,7 @@
 package com.cellclaw.provider
 
+import android.util.Log
+import com.cellclaw.config.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -21,15 +23,18 @@ import javax.inject.Singleton
 @Singleton
 class CustomOpenAIProvider @Inject constructor() : Provider {
 
-    private var _name: String = "custom"
+    private var _name: String = "omniroute"
     override val name: String
         get() = _name
 
-    private var baseUrl: String = "http://10.0.2.2:20128/v1"
+    private var baseUrl: String = AppConfig.DEFAULT_OMNIROUTE_URL
     private var apiKey: String = ""
     private var model: String = DEFAULT_MODEL
 
-    private val client = OkHttpClient.Builder()
+    val activeModel: String
+        get() = model
+
+    internal var client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .build()
@@ -56,7 +61,10 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     }
 
     fun getChatCompletionsUrl(): String {
-        val clean = baseUrl.trim().trimEnd('/')
+        var clean = baseUrl.trim().trimEnd('/')
+        if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+            clean = "http://$clean"
+        }
         return when {
             clean.endsWith("/chat/completions") -> clean
             clean.endsWith("/v1") -> "$clean/chat/completions"
@@ -67,27 +75,141 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     override suspend fun complete(request: CompletionRequest): CompletionResponse =
         withContext(Dispatchers.IO) {
             val url = getChatCompletionsUrl()
-            val body = buildRequestBody(request)
-            val requestBuilder = Request.Builder()
-                .url(url)
-                .addHeader("Content-Type", "application/json")
-                .post(body.toRequestBody("application/json".toMediaType()))
+            val fallbackModels = listOf("claude-3-7-sonnet", "claude-3-5-sonnet", "gemini-flash-lite-latest")
 
-            if (apiKey.isNotBlank()) {
-                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            val currentModel = this@CustomOpenAIProvider.model
+            val modelsToTry = mutableListOf(currentModel)
+            for (fb in fallbackModels) {
+                if (fb != currentModel) {
+                    modelsToTry.add(fb)
+                }
             }
 
-            val httpRequest = requestBuilder.build()
-            val response = client.newCall(httpRequest).execute()
-            val responseBody = response.body?.string()
-                ?: throw ProviderException("Empty response body from $url")
+            var lastException: Exception? = null
 
-            if (!response.isSuccessful) {
-                throw ProviderException("Custom API error ${response.code} from $url: $responseBody")
+            for (attemptModel in modelsToTry) {
+                try {
+                    val body = buildRequestBody(request, attemptModel)
+                    val requestBuilder = Request.Builder()
+                        .url(url)
+                        .addHeader("Content-Type", "application/json")
+                        .post(body.toRequestBody("application/json".toMediaType()))
+
+                    if (apiKey.isNotBlank()) {
+                        requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+                    }
+
+                    val httpRequest = requestBuilder.build()
+                    val response = client.newCall(httpRequest).execute()
+                    val responseBody = response.body?.string() ?: ""
+
+                    if (response.isSuccessful) {
+                        if (attemptModel != this@CustomOpenAIProvider.model) {
+                            safeLogI("CustomOpenAIProvider", "Fallback recovered on model: $attemptModel")
+                            this@CustomOpenAIProvider.model = attemptModel
+                        }
+                        return@withContext parseResponse(json.parseToJsonElement(responseBody).jsonObject)
+                    }
+
+                    // Fallback on recoverable errors (400 catalog error, 402 credits, 404 deprecated, 429 rate limit, 504 timeout)
+                    val isRecoverable = response.code in listOf(400, 402, 404, 429, 504)
+                    if (isRecoverable && attemptModel != modelsToTry.last()) {
+                        safeLogW("CustomOpenAIProvider", "Model $attemptModel failed with HTTP ${response.code}, falling back...")
+                        continue
+                    }
+
+                    throw ProviderException(formatUserFriendlyError(response.code, responseBody))
+                } catch (e: ProviderException) {
+                    lastException = e
+                    throw e
+                } catch (e: Exception) {
+                    lastException = e
+                    if (attemptModel == modelsToTry.last()) {
+                        throw e
+                    }
+                    safeLogW("CustomOpenAIProvider", "Model $attemptModel encountered ${e.message}, falling back...")
+                }
             }
 
-            parseResponse(json.parseToJsonElement(responseBody).jsonObject)
+            throw lastException ?: ProviderException("Failed to get completion from $url")
         }
+
+    internal fun formatUserFriendlyError(code: Int, rawBody: String): String {
+        val trimmedBody = rawBody.trim()
+
+        // 1. Detect and handle HTML responses (e.g. reverse proxy 504/502/503 errors) cleanly
+        if (isHtmlResponse(trimmedBody)) {
+            return when (code) {
+                504 -> "Gateway timeout (504): The server took too long to respond. Please try again."
+                502 -> "Bad gateway (502): The upstream server is temporarily unreachable."
+                503 -> "Service unavailable (503): The AI service is overloaded or down for maintenance."
+                else -> "Server error ($code): Unexpected HTML response received."
+            }
+        }
+
+        // 2. Extract error message from JSON safely without throwing IllegalArgumentException
+        val extractedMessage: String = if (trimmedBody.isNotBlank()) {
+            try {
+                val element = json.parseToJsonElement(trimmedBody)
+                if (element is JsonObject) {
+                    when (val errorElement = element["error"]) {
+                        is JsonObject -> errorElement["message"]?.jsonPrimitive?.contentOrNull
+                            ?: errorElement["detail"]?.jsonPrimitive?.contentOrNull
+                        is JsonPrimitive -> errorElement.contentOrNull
+                        else -> null
+                    } ?: element["message"]?.jsonPrimitive?.contentOrNull
+                    ?: element["detail"]?.jsonPrimitive?.contentOrNull
+                    ?: trimmedBody.take(180)
+                } else if (element is JsonPrimitive) {
+                    element.contentOrNull ?: trimmedBody.take(180)
+                } else {
+                    trimmedBody.take(180)
+                }
+            } catch (_: Exception) {
+                trimmedBody.take(180)
+            }
+        } else {
+            ""
+        }
+
+        val detail = if (extractedMessage.isNotBlank()) ": $extractedMessage" else ""
+
+        // 3. Concise, user-friendly human readable errors
+        return when (code) {
+            400 -> "Request failed (400): Model unavailable or invalid request parameters$detail"
+            401 -> "Authentication failed (401): Please check your API key."
+            402 -> "Provider credits exhausted (402)$detail"
+            403 -> "Access forbidden (403): You do not have permission to access this model."
+            404 -> "Model unavailable or deprecated (404)$detail"
+            429 -> "Rate limit reached / cooldown in effect (429)$detail"
+            500 -> "Internal server error (500)$detail"
+            502 -> "Bad gateway (502)$detail"
+            503 -> "Service unavailable (503)$detail"
+            504 -> "Gateway timeout (504): The server took too long to respond."
+            else -> "API Error ($code)$detail"
+        }
+    }
+
+    private fun isHtmlResponse(body: String): Boolean {
+        val lower = body.lowercase()
+        return lower.startsWith("<!doctype html") ||
+               lower.startsWith("<html") ||
+               lower.contains("<head>") ||
+               lower.contains("<title>") ||
+               (lower.startsWith("<") && lower.contains("</html>"))
+    }
+
+    private fun safeLogI(tag: String, message: String) {
+        try {
+            Log.i(tag, message)
+        } catch (_: Throwable) {}
+    }
+
+    private fun safeLogW(tag: String, message: String) {
+        try {
+            Log.w(tag, message)
+        } catch (_: Throwable) {}
+    }
 
     override fun stream(request: CompletionRequest): Flow<StreamEvent> = flow {
         try {
@@ -107,7 +229,7 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
         }
     }.flowOn(Dispatchers.IO)
 
-    private fun buildRequestBody(request: CompletionRequest): String {
+    private fun buildRequestBody(request: CompletionRequest, targetModel: String = this.model): String {
         toolNameMap.clear()
         val messages = buildJsonArray {
             add(buildJsonObject {
@@ -185,7 +307,7 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
         }
 
         return json.encodeToString(JsonObject.serializer(), buildJsonObject {
-            put("model", model)
+            put("model", targetModel)
             put("messages", messages)
             put("max_tokens", request.maxTokens)
             if (request.tools.isNotEmpty()) {
@@ -269,6 +391,6 @@ class CustomOpenAIProvider @Inject constructor() : Provider {
     }
 
     companion object {
-        const val DEFAULT_MODEL = "gemini-2.5-flash"
+        const val DEFAULT_MODEL = "claude-3-7-sonnet"
     }
 }
