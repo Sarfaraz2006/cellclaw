@@ -43,18 +43,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.0.0-jarvis
-          name: "JARVIS APK v1.0.0"
+          tag_name: v1.1.0-apex
+          name: "APEX AI (JARVIS Edition) v1.1.0"
           body: |
-            ### 🤖 JARVIS Autonomous AI Assistant for Android
+            ### 🚀 APEX AI — Autonomous Mobile Assistant (Artemis Integrated)
             
             **What's new in this build:**
-            - 🦾 **Universal AI Engine:** Direct OmniRoute (server proxy) & Custom OpenAI endpoint support.
-            - 🔦 **Hardware Controls:** Flashlight on/off/toggle, volume control & mute.
-            - 🎵 **Media Playback:** Play, pause, next/prev tracks on Spotify, YouTube, etc.
-            - 📊 **Diagnostics:** Full system status (Battery %, RAM, Storage, Wi-Fi).
-            - 🎙️ **Hands-Free Continuous Voice:** Zero-beep audio loop & auto-listen.
-            - 🔷 **Arc Reactor HUD:** Glowing Stark Arc Reactor floating interface.
+            - ⚡ **Artemis 3-Tier Multi-Window Penetration:** Detects and interacts with dialogs, floating overlays, system alerts, and IME keyboards across layers.
+            - 🎯 **Chained Click Sequence (`click_sequence`):** Atomic 50ms sequential tapping to conquer transient UI, auto-dismissing toast notifications, and short-timeout menus.
+            - 📐 **Universal Coordinate Normalization:** Full 0-1000 coordinate space support alongside raw pixel coordinates, auto-scaling seamlessly across all device screens and foldables.
+            - 📸 **Atomic Snapshot (`screenshot_and_read`):** Simultaneous hardware screenshot capture and UI accessibility layout tree parsing at the exact same clock tick.
+            - 🧠 **Artemis Flash Cognitive Protocol:** Strict Observation -> Planning -> Action execution cycle with anti-stagnation loop protection and Time-Sensitive UI awareness.
+            - 🦾 **Universal AI Engine & Arc Reactor HUD:** OmniRoute server proxy, Custom OpenAI endpoint, Flashlight, Volume, Media control, and zero-latency continuous voice.
             
             Download `app-debug.apk` below directly to your phone!
           files: app/build/outputs/apk/debug/*.apk

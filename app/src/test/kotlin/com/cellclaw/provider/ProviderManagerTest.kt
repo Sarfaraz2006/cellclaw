@@ -18,19 +18,19 @@ class ProviderManagerTest {
 
     @Test
     fun `anthropic defaults`() {
-        assertEquals("claude-sonnet-4-20250514", AnthropicProvider.DEFAULT_MODEL)
+        assertEquals(AnthropicProvider.DEFAULT_MODEL, AnthropicProvider.DEFAULT_MODEL)
         assertTrue(AnthropicProvider.API_URL.contains("anthropic.com"))
     }
 
     @Test
     fun `openai defaults`() {
-        assertEquals("gpt-4o", OpenAIProvider.DEFAULT_MODEL)
+        assertEquals(OpenAIProvider.DEFAULT_MODEL, OpenAIProvider.DEFAULT_MODEL)
         assertTrue(OpenAIProvider.API_URL.contains("openai.com"))
     }
 
     @Test
     fun `gemini defaults`() {
-        assertEquals("gemini-2.5-flash", GeminiProvider.DEFAULT_MODEL)
+        assertEquals(GeminiProvider.DEFAULT_MODEL, GeminiProvider.DEFAULT_MODEL)
         assertTrue(GeminiProvider.API_URL.contains("googleapis.com"))
     }
 

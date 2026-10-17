@@ -90,17 +90,22 @@ class AppAutomateTool @Inject constructor(
 ) : Tool {
     override val name = "app.automate"
     override val description = """Automate actions in other apps using AccessibilityService.
-Actions: tap (by text or coordinates), type (into focused field), swipe (left/right/up/down for card swiping), scroll (up/down), back, home, find_element.
+Actions: tap (by text or coordinates), tap_and_read (tap and immediately inspect new screen in one turn), click_sequence (chain multiple coordinate taps with 50ms delay to catch transient/auto-dismissing menus), type (into focused field), swipe (left/right/up/down for card swiping), scroll (up/down), back, home, recents, find_element.
+Supports raw coordinates and normalized 0-1000 scale (normalized=true).
 Requires accessibility permission enabled in system settings."""
     override val parameters = ToolParameters(
         properties = mapOf(
             "action" to ParameterProperty("string", "Action to perform",
-                enum = listOf("tap", "type", "swipe", "scroll", "back", "home", "recents", "find_element")),
+                enum = listOf("tap", "tap_and_read", "click_sequence", "type", "swipe", "scroll", "back", "home", "recents", "find_element")),
             "text" to ParameterProperty("string", "Text to type, or text of element to tap/find"),
             "x" to ParameterProperty("integer", "X coordinate for tap"),
             "y" to ParameterProperty("integer", "Y coordinate for tap"),
+            "sequence" to ParameterProperty("string", "JSON array of coordinate pairs for click_sequence, e.g. '[[500,600],[800,200]]'"),
+            "delay_ms" to ParameterProperty("integer", "Optional inter-click delay in ms for click_sequence (default 50)"),
+            "normalized" to ParameterProperty("boolean", "If true, coordinates are in normalized 0-1000 scale (default false)"),
             "direction" to ParameterProperty("string", "Direction for swipe/scroll",
-                enum = listOf("left", "right", "up", "down"))
+                enum = listOf("left", "right", "up", "down")),
+            "settle_ms" to ParameterProperty("integer", "Optional post-tap settle delay in ms before reading screen for tap_and_read (default 150)")
         ),
         required = listOf("action")
     )
@@ -111,10 +116,10 @@ Requires accessibility permission enabled in system settings."""
             ?: return ToolResult.error("Missing 'action' parameter")
 
         return try {
-            // Hide overlay for tap/swipe so it doesn't interfere with gestures
-            if (action in listOf("tap", "swipe")) {
+            // Hide overlay for gestures so it doesn't interfere
+            if (action in listOf("tap", "tap_and_read", "click_sequence", "swipe")) {
                 overlayVisibility.requestHide(500)
-                delay(100) // Wait for overlay to disappear
+                delay(50) // Reduced from 100ms
             }
 
             val (receiver, deferred) = AccessibilityBridge.createReceiver()
@@ -125,7 +130,11 @@ Requires accessibility permission enabled in system settings."""
                 params["text"]?.jsonPrimitive?.contentOrNull?.let { putExtra("text", it) }
                 params["x"]?.jsonPrimitive?.intOrNull?.let { putExtra("x", it) }
                 params["y"]?.jsonPrimitive?.intOrNull?.let { putExtra("y", it) }
+                params["sequence"]?.jsonPrimitive?.contentOrNull?.let { putExtra("sequence", it) }
+                params["delay_ms"]?.jsonPrimitive?.longOrNull?.let { putExtra("delay_ms", it) }
+                params["normalized"]?.jsonPrimitive?.booleanOrNull?.let { putExtra("normalized", it) }
                 params["direction"]?.jsonPrimitive?.contentOrNull?.let { putExtra("direction", it) }
+                params["settle_ms"]?.jsonPrimitive?.longOrNull?.let { putExtra("settle_ms", it) }
                 setPackage(context.packageName)
             }
             context.sendBroadcast(intent)
@@ -153,11 +162,12 @@ class ScreenReadTool @Inject constructor(
 ) : Tool {
     override val name = "screen.read"
     override val description = """Read the current screen content of whatever app is in the foreground.
-Returns all visible text, buttons, and UI elements with their positions.
-Use this to understand what's on screen before deciding what action to take."""
+Returns all visible text, buttons, and UI elements with their bounds and normalized 0-1000 positions.
+Optionally captures an atomic screenshot at the exact same moment (include_screenshot=true)."""
     override val parameters = ToolParameters(
         properties = mapOf(
-            "wait_ms" to ParameterProperty("integer", "Optional delay in ms before reading (useful after screen transitions, default 0)")
+            "wait_ms" to ParameterProperty("integer", "Optional delay in ms before reading (useful after screen transitions, default 0)"),
+            "include_screenshot" to ParameterProperty("boolean", "If true, atomically captures screenshot and UI tree in one turn (default false)")
         )
     )
     override val requiresApproval = false
@@ -166,12 +176,14 @@ Use this to understand what's on screen before deciding what action to take."""
         return try {
             val (receiver, deferred) = AccessibilityBridge.createReceiver()
             val waitMs = params["wait_ms"]?.jsonPrimitive?.longOrNull ?: 0
+            val incScreenshot = params["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: false
 
             val action = if (waitMs > 0) "wait_and_read" else "read_screen"
             val intent = Intent(CellClawAccessibility.ACTION_COMMAND).apply {
                 putExtra("result_receiver", receiver)
                 putExtra("action", action)
                 if (waitMs > 0) putExtra("delay_ms", waitMs)
+                if (incScreenshot) putExtra("include_screenshot", true)
                 setPackage(context.packageName)
             }
             context.sendBroadcast(intent)

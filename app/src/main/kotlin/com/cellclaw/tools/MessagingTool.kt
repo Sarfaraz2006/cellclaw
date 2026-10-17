@@ -105,14 +105,14 @@ Parses visible messages into a structured list with sender, text, and timestamp.
 Must have a chat open in the foreground."""
     override val parameters = ToolParameters(
         properties = mapOf(
-            "wait_ms" to ParameterProperty("integer", "Optional delay in ms before reading (default 500)")
+            "wait_ms" to ParameterProperty("integer", "Optional delay in ms before reading (default 150)")
         )
     )
     override val requiresApproval = false
 
     override suspend fun execute(params: JsonObject): ToolResult {
         return try {
-            val waitMs = params["wait_ms"]?.jsonPrimitive?.longOrNull ?: 500
+            val waitMs = params["wait_ms"]?.jsonPrimitive?.longOrNull ?: 150
             val (receiver, deferred) = AccessibilityBridge.createReceiver()
 
             val action = if (waitMs > 0) "wait_and_read" else "read_screen"
@@ -253,8 +253,8 @@ Must have a chat open in the foreground with a visible input field."""
                 }
             }
 
-            // Small delay for UI to update
-            kotlinx.coroutines.delay(300)
+            // Small delay for UI to update (trimmed from 300ms to 100ms)
+            kotlinx.coroutines.delay(100)
 
             // Step 3: Tap the send button
             val (sendReceiver, sendDeferred) = AccessibilityBridge.createReceiver()
