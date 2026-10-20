@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CellClaw"
+rootProject.name = "APEX AI"
 include(":app")

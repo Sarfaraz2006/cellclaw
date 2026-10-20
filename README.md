@@ -1,17 +1,10 @@
-<p align="center">
-  <img src="CellClaw_1.png" alt="CellClaw" width="300"/>
-</p>
-<p align="center">
-# CellClaw
-</p>
-**Autonomous AI assistant for Android.** CellClaw runs natively on your phone to do any task. No other hardware required.
+# 🚀 APEX AI — Autonomous Mobile Assistant for Android
 
-Built by and inspired by members of the Harvard, MIT, and Sundai.Club communities
-Additional inspiration from ZeroClaw
+**Autonomous AI assistant for Android.** APEX AI runs natively on your phone to accomplish any task. Powered by frontier 2026 AI models and Google Artemis mobile automation capabilities. No external server required.
 
 ## What Can It Do?
 
-CellClaw has **33 tools** across 12 categories that give the AI deep access to your phone:
+APEX AI has **33 tools** across 12 categories that give the AI deep access to your phone:
 
 | Category | Tools | Examples |
 |----------|-------|---------|
@@ -39,13 +32,13 @@ The AI decides which tools to use. You just describe what you want in plain lang
 
 ### Install
 
-1. Download the latest APK from [Releases](https://github.com/jordanthejet/cellclaw/releases)
+1. Download the latest APK from [Releases](https://github.com/Sarfaraz2006/apex-ai/releases)
 2. Enable "Install from unknown sources" if prompted
-3. Open CellClaw
+3. Open APEX AI
 
 ### First Launch
 
-CellClaw walks you through a 4-step setup:
+APEX AI walks you through a 4-step setup:
 
 1. **Choose your AI provider** — Pick Anthropic, OpenAI, Gemini, or OpenRouter and enter your API key. Keys are encrypted on-device using Android Keystore.
 
@@ -56,18 +49,18 @@ CellClaw walks you through a 4-step setup:
    - **Balanced** — Reads are automatic, sends/writes ask first. *(Recommended)*
    - **Cautious** — Almost everything requires approval.
 
-4. **Grant permissions** — CellClaw needs three system permissions:
+4. **Grant permissions** — APEX AI needs three system permissions:
    - **Display over other apps** — For the floating overlay bubble
    - **Accessibility service** — For reading screens and controlling apps
    - **Notification access** — For reading and acting on notifications
 
    Each links directly to the Android settings page where you enable it.
 
-After setup, CellClaw starts a foreground service and you're ready to go.
+After setup, APEX AI starts a foreground service and you're ready to go.
 
 ## How It Works
 
-CellClaw runs an **agent loop** — a cycle where the AI thinks, calls tools, observes results, and repeats until the task is done:
+APEX AI runs an **agent loop** — a cycle where the AI thinks, calls tools, observes results, and repeats until the task is done:
 
 ```
 You: "Open Tinder and swipe right on people over 30"
@@ -87,7 +80,7 @@ The AI decides the strategy. You don't write rules or scripts — it figures out
 
 ### Screen Reading
 
-CellClaw reads your screen in two ways:
+APEX AI reads your screen in two ways:
 
 - **Accessibility tree** (`screen.read`) — Fast and free. Returns text, buttons, and UI elements as structured data. Works great for most apps.
 - **Screenshots** (`screen.capture` + `vision.analyze`) — Uses the AI's vision capability to understand images, game boards, charts, and canvas-rendered content that isn't in the accessibility tree.
@@ -96,7 +89,7 @@ The AI picks the right approach based on the task.
 
 ### Heartbeat System
 
-For long-running tasks (playing a chess game, monitoring an app, waiting for a response), CellClaw uses a **heartbeat** — a periodic check-in that wakes the AI to look at the screen and act if needed.
+For long-running tasks (playing a chess game, monitoring an app, waiting for a response), APEX AI uses a **heartbeat** — a periodic check-in that wakes the AI to look at the screen and act if needed.
 
 - Starts at 5-second intervals, backs off to 60 seconds when nothing is happening
 - Resets to fast polling when the AI takes action
@@ -105,7 +98,7 @@ For long-running tasks (playing a chess game, monitoring an app, waiting for a r
 
 ### Approval System
 
-When the AI wants to do something sensitive (send a message, make a call, execute a script), CellClaw can ask for your approval first. This depends on your autonomy level:
+When the AI wants to do something sensitive (send a message, make a call, execute a script), APEX AI can ask for your approval first. This depends on your autonomy level:
 
 | Action Type | Full Auto | Balanced | Cautious |
 |------------|-----------|----------|----------|
@@ -122,7 +115,7 @@ Approvals show up in the chat and in the notification. You can tap **Approve**, 
 - **Floating overlay** — Tap the bubble for quick questions without leaving your current app
 - **Notification reply** — Reply directly from the persistent notification
 - **"Explain Screen" button** — One-tap screenshot + AI explanation from the notification
-- **Quick Settings tile** — Toggle CellClaw from the notification shade
+- **Quick Settings tile** — Toggle APEX AI from the notification shade
 - **Wake word** — Hands-free activation (requires microphone permission)
 
 ## Supported AI Models
@@ -139,8 +132,8 @@ Switch providers and models anytime in Settings.
 ## Build from Source
 
 ```bash
-git clone https://github.com/jordanthejet/cellclaw.git
-cd cellclaw
+git clone https://github.com/Sarfaraz2006/apex-ai.git
+cd apex-ai
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -159,7 +152,7 @@ Physical device recommended — the accessibility service doesn't fully work on 
 ## Project Structure
 
 ```
-app/src/main/kotlin/com/cellclaw/
+app/src/main/kotlin/com/apexai/
 ├── agent/        # AgentLoop, HeartbeatManager, AutonomyPolicy
 ├── approval/     # ApprovalQueue, BiometricGate
 ├── config/       # AppConfig, Identity (system prompt), SecureKeyStore
@@ -207,7 +200,7 @@ class YourTool @Inject constructor() : Tool {
 
 - **API keys are encrypted** on-device using Android Keystore (AES-256-GCM). Never stored in plaintext.
 - **You control what the AI can do** via the autonomy level. Sensitive actions can require explicit approval.
-- **Everything runs locally** — no CellClaw server. Your conversations go directly to your chosen AI provider.
+- **Everything runs locally** — no APEX AI server. Your conversations go directly to your chosen AI provider.
 - **Biometric gate** available for sensitive operations (fingerprint/face unlock).
 - **No telemetry, no analytics, no tracking.**
 

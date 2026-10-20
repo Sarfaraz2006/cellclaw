@@ -1,0 +1,41 @@
+package com.apexai.service.receivers
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.util.Log
+import com.apexai.service.ApexService
+import com.apexai.wakeword.WakeWordService
+
+class BootReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+
+        Log.d(TAG, "Device booted, checking auto-start preference")
+
+        val prefs = context.getSharedPreferences("apexai_config", Context.MODE_PRIVATE)
+        val autoStart = prefs.getBoolean("auto_start_boot", false)
+
+        if (autoStart) {
+            Log.d(TAG, "Auto-starting APEX AI service")
+            val serviceIntent = Intent(context, ApexService::class.java).apply {
+                action = ApexService.ACTION_START
+            }
+            context.startForegroundService(serviceIntent)
+        }
+
+        val wakeWordEnabled = prefs.getBoolean("wake_word_enabled", false)
+        if (wakeWordEnabled) {
+            Log.d(TAG, "Auto-starting WakeWord service")
+            val wakeWordIntent = Intent(context, WakeWordService::class.java).apply {
+                action = WakeWordService.ACTION_START
+            }
+            context.startForegroundService(wakeWordIntent)
+        }
+    }
+
+    companion object {
+        private const val TAG = "BootReceiver"
+    }
+}

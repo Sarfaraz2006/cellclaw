@@ -69,19 +69,19 @@
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
-        android:name=".CellClawApp"
+        android:name=".ApexApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.CellClaw"
+        android:theme="@style/Theme.ApexAI"
         tools:targetApi="35">
 
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.CellClaw">
+            android:theme="@style/Theme.ApexAI">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -90,13 +90,13 @@
 
         <!-- Foreground Service -->
         <service
-            android:name=".service.CellClawService"
+            android:name=".service.ApexService"
             android:exported="false"
             android:foregroundServiceType="specialUse" />
 
         <!-- Accessibility Service (separate process so it survives instrumentation restarts) -->
         <service
-            android:name=".service.CellClawAccessibility"
+            android:name=".service.ApexAccessibilityService"
             android:exported="true"
             android:process=":a11y"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
@@ -110,10 +110,10 @@
 
         <!-- Quick Settings Tile -->
         <service
-            android:name=".service.CellClawTileService"
+            android:name=".service.ApexTileService"
             android:exported="true"
-            android:icon="@drawable/ic_qs_cellclaw"
-            android:label="CellClaw"
+            android:icon="@drawable/ic_qs_apexai"
+            android:label="APEX AI"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
@@ -137,7 +137,7 @@
 
         <!-- Notification Listener Service -->
         <service
-            android:name=".service.CellClawNotificationListener"
+            android:name=".service.ApexNotificationListener"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
@@ -196,10 +196,10 @@
             android:name=".service.receivers.NotificationActionReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.cellclaw.NOTIFICATION_REPLY" />
-                <action android:name="com.cellclaw.SCREENSHOT_EXPLAIN" />
-                <action android:name="com.cellclaw.APPROVE_ALL" />
-                <action android:name="com.cellclaw.DENY_ALL" />
+                <action android:name="com.apexai.NOTIFICATION_REPLY" />
+                <action android:name="com.apexai.SCREENSHOT_EXPLAIN" />
+                <action android:name="com.apexai.APPROVE_ALL" />
+                <action android:name="com.apexai.DENY_ALL" />
             </intent-filter>
         </receiver>
 

@@ -1,4 +1,4 @@
-name: Build JARVIS APK
+name: Build APEX AI APK
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-debug-apk
+          name: APEX-AI-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
@@ -43,12 +43,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.1.0-apex
-          name: "APEX AI (JARVIS Edition) v1.1.0"
+          tag_name: v1.2.0-apex
+          name: "APEX AI v1.2.0 (Artemis Autonomous Edition)"
           body: |
             ### 🚀 APEX AI — Autonomous Mobile Assistant (Artemis Integrated)
             
             **What's new in this build:**
+            - 🌟 **Complete Rebranding to APEX AI:** Full standalone identity, `com.apexai` architecture, and services.
             - ⚡ **Artemis 3-Tier Multi-Window Penetration:** Detects and interacts with dialogs, floating overlays, system alerts, and IME keyboards across layers.
             - 🎯 **Chained Click Sequence (`click_sequence`):** Atomic 50ms sequential tapping to conquer transient UI, auto-dismissing toast notifications, and short-timeout menus.
             - 📐 **Universal Coordinate Normalization:** Full 0-1000 coordinate space support alongside raw pixel coordinates, auto-scaling seamlessly across all device screens and foldables.
@@ -60,3 +61,4 @@ jobs:
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -15,16 +15,16 @@ rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use 
 }
 
 android {
-    namespace = "com.cellclaw"
+    namespace = "com.apexai"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cellclaw"
+        applicationId = "com.apexai"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
-        testInstrumentationRunner = "com.cellclaw.test.HiltTestRunner"
+        testInstrumentationRunner = "com.apexai.test.HiltTestRunner"
 
         buildConfigField("String", "GEMINI_API_KEY",
             "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
@@ -60,19 +60,19 @@ android {
 }
 
 tasks.register("enableAccessibility") {
-    description = "Enable CellClaw accessibility service via adb"
+    description = "Enable APEX AI accessibility service via adb"
     doLast {
         val adb = android.adbExecutable.absolutePath
         exec {
             commandLine(adb, "shell", "settings", "put", "secure",
                 "enabled_accessibility_services",
-                "com.cellclaw/com.cellclaw.service.CellClawAccessibility")
+                "com.apexai/com.apexai.service.ApexAccessibilityService")
         }
         exec {
             commandLine(adb, "shell", "settings", "put", "secure",
                 "accessibility_enabled", "1")
         }
-        logger.lifecycle("Accessibility service enabled for CellClaw")
+        logger.lifecycle("Accessibility service enabled for APEX AI")
     }
 }
 
