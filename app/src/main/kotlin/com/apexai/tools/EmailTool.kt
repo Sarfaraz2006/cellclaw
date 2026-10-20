@@ -58,7 +58,7 @@ class EmailSendTool @Inject constructor(
             if (sendResult) {
                 // Wait a moment then go back to APEX AI (trimmed from 1000ms to 150ms)
                 delay(150)
-                bringBackAPEX AI()
+                bringBackApexApp()
 
                 ToolResult.success(buildJsonObject {
                     put("sent", true)
@@ -100,7 +100,7 @@ class EmailSendTool @Inject constructor(
         return false
     }
 
-    private fun bringBackAPEX AI() {
+    private fun bringBackApexApp() {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         intent?.let {
             it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
