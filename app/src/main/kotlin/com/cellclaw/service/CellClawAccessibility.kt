@@ -43,17 +43,32 @@ class CellClawAccessibility : AccessibilityService() {
             serviceScope.launch {
                 try {
                     val result = when (action) {
-                        "tap" -> handleTap(
-                            intent.getIntExtra("x", 0),
-                            intent.getIntExtra("y", 0),
-                            intent.getStringExtra("text")
-                        )
-                        "tap_and_read" -> handleTapAndRead(
-                            intent.getIntExtra("x", 0),
-                            intent.getIntExtra("y", 0),
-                            intent.getStringExtra("text"),
-                            intent.getLongExtra("settle_ms", 150L)
-                        )
+                        "tap" -> {
+                            val isNorm = intent.getBooleanExtra("normalized", false)
+                            val rawX = intent.getIntExtra("x", 0)
+                            val rawY = intent.getIntExtra("y", 0)
+                            val (x, y) = toScreenCoords(rawX, rawY, isNorm)
+                            handleTap(x, y, intent.getStringExtra("text"))
+                        }
+                        "tap_and_read" -> {
+                            val isNorm = intent.getBooleanExtra("normalized", false)
+                            val rawX = intent.getIntExtra("x", 0)
+                            val rawY = intent.getIntExtra("y", 0)
+                            val (x, y) = toScreenCoords(rawX, rawY, isNorm)
+                            handleTapAndRead(
+                                x,
+                                y,
+                                intent.getStringExtra("text"),
+                                intent.getLongExtra("settle_ms", 150L)
+                            )
+                        }
+                        "click_sequence" -> {
+                            val seqStr = intent.getStringExtra("sequence") ?: "[]"
+                            val delayMs = intent.getLongExtra("delay_ms", 50L)
+                            val isNorm = intent.getBooleanExtra("normalized", false)
+                            val points = parsePointsSequence(seqStr)
+                            handleSequence(points, delayMs, isNorm)
+                        }
                         "type" -> handleType(intent.getStringExtra("text") ?: "")
                         "swipe" -> handleSwipe(intent.getStringExtra("direction") ?: "right")
                         "scroll" -> handleScroll(intent.getStringExtra("direction") ?: "down")
@@ -69,7 +84,11 @@ class CellClawAccessibility : AccessibilityService() {
                             performGlobalAction(GLOBAL_ACTION_RECENTS)
                             successResult("recents", "Opened recents")
                         }
-                        "read_screen" -> readScreen()
+                        "read_screen" -> {
+                            val incScreenshot = intent.getBooleanExtra("include_screenshot", false)
+                            readScreen(incScreenshot)
+                        }
+                        "screenshot_and_read", "atomic_snapshot" -> readScreen(true)
                         "find_element" -> findElement(intent.getStringExtra("text") ?: "")
                         "screenshot" -> {
                             handleScreenshot(resultReceiver)
@@ -79,7 +98,7 @@ class CellClawAccessibility : AccessibilityService() {
                             // Trimmed default delay from 500ms to 150ms
                             val delayMs = intent.getLongExtra("delay_ms", 150L)
                             delay(delayMs)
-                            readScreen()
+                            readScreen(false)
                         }
                         else -> buildJsonObject {
                             put("error", "Unknown action: $action")
@@ -188,17 +207,130 @@ class CellClawAccessibility : AccessibilityService() {
         }
     }
 
-    // ── Resilient Active Window Acquisition ─────────────────────────────
+    // ── Resilient Active Window Acquisition (Artemis 3-Tier Multi-Window Penetration) ──
 
-    private suspend fun getActiveRootNodeWithRetry(maxAttempts: Int = 4, intervalMs: Long = 40L): AccessibilityNodeInfo? {
+    private suspend fun getActiveRootNodeWithRetry(maxAttempts: Int = 5, intervalMs: Long = 40L): AccessibilityNodeInfo? {
         for (i in 1..maxAttempts) {
+            // Tier 1: Multi-window enumeration sorted by layer descending (captures Dialogs, Popups, IME)
+            try {
+                val windowList = windows
+                if (!windowList.isNullOrEmpty()) {
+                    val sorted = windowList.sortedByDescending { it.layer }
+                    for (w in sorted) {
+                        val root = if (Build.VERSION.SDK_INT >= 33) {
+                            try {
+                                w.getRoot(AccessibilityNodeInfo.FLAG_PREFETCH_DESCENDANTS_HYBRID)
+                            } catch (_: Throwable) {
+                                w.root
+                            }
+                        } else {
+                            w.root
+                        }
+                        if (root != null) return root
+                    }
+                }
+            } catch (_: Throwable) {}
+
+            // Tier 2: rootInActiveWindow fallback
             val root = rootInActiveWindow
             if (root != null) return root
+
+            // Tier 3: Focused node backtracking (recovers window tree during transient animations/transitions)
+            try {
+                val focused = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    ?: findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)
+                if (focused != null) {
+                    var current = focused
+                    var parent = current.parent
+                    while (parent != null) {
+                        current = parent
+                        parent = current.parent
+                    }
+                    return current
+                }
+            } catch (_: Throwable) {}
+
             if (i < maxAttempts) {
                 delay(intervalMs)
             }
         }
         return null
+    }
+
+    // ── Coordinate Normalization & Chained Sequence Support (Artemis Paradigm) ──
+
+    fun toScreenCoords(nx: Int, ny: Int, normalized: Boolean): Pair<Int, Int> {
+        return if (normalized) {
+            val px = (nx * screenWidth / 1000).coerceIn(0, screenWidth - 1)
+            val py = (ny * screenHeight / 1000).coerceIn(0, screenHeight - 1)
+            Pair(px, py)
+        } else {
+            Pair(nx, ny)
+        }
+    }
+
+    fun parsePointsSequence(seqStr: String): List<Pair<Int, Int>> {
+        val points = mutableListOf<Pair<Int, Int>>()
+        try {
+            val element = Json.parseToJsonElement(seqStr)
+            if (element is JsonArray) {
+                for (item in element) {
+                    if (item is JsonArray && item.size >= 2) {
+                        val x = item[0].jsonPrimitive.intOrNull ?: 0
+                        val y = item[1].jsonPrimitive.intOrNull ?: 0
+                        points.add(Pair(x, y))
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Fallback comma/semicolon parser: "500,500;600,600"
+            val parts = seqStr.split(';', '|')
+            for (p in parts) {
+                val coords = p.trim().split(',', ' ')
+                if (coords.size >= 2) {
+                    val x = coords[0].trim().toIntOrNull() ?: continue
+                    val y = coords[1].trim().toIntOrNull() ?: continue
+                    points.add(Pair(x, y))
+                }
+            }
+        }
+        return points
+    }
+
+    private suspend fun handleSequence(
+        points: List<Pair<Int, Int>>,
+        delayMs: Long = 50L,
+        normalized: Boolean = false
+    ): JsonObject {
+        if (points.isEmpty()) return errorResult("Empty sequence points")
+        val executed = mutableListOf<String>()
+
+        for (i in points.indices) {
+            val pt = points[i]
+            val (x, y) = toScreenCoords(pt.first, pt.second, normalized)
+            val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
+                .build()
+
+            val state = dispatchGestureAwait(gesture)
+            if (state !is GestureResultState.Success) {
+                return errorResult("Sequence failed at step ${i + 1} ($x, $y): ${state::class.simpleName}")
+            }
+            executed.add("($x, $y)")
+            if (i < points.size - 1 && delayMs > 0) {
+                delay(delayMs)
+            }
+        }
+
+        return buildJsonObject {
+            put("success", true)
+            put("action", "click_sequence")
+            put("message", "Executed sequence of ${points.size} clicks")
+            putJsonArray("executed") {
+                executed.forEach { add(it) }
+            }
+        }
     }
 
     // ── Tap ──────────────────────────────────────────────────────────────
@@ -399,9 +531,62 @@ class CellClawAccessibility : AccessibilityService() {
         }
     }
 
-    // ── Read Screen ──────────────────────────────────────────────────────
+    // ── Read Screen (Artemis Enhanced Atomic Snapshot & Semantic Extraction) ──
 
-    private suspend fun readScreen(): JsonObject {
+    private suspend fun captureScreenshotAsync(): String? = withTimeoutOrNull(2500L) {
+        val deferred = CompletableDeferred<String?>()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            try {
+                val screenshotsDir = File(cacheDir, "screenshots").apply { mkdirs() }
+                val file = File(screenshotsDir, "screenshot_${System.currentTimeMillis()}.png")
+                val proc = Runtime.getRuntime().exec(arrayOf("screencap", "-p", file.absolutePath))
+                val exitCode = proc.waitFor()
+                if (exitCode == 0 && file.exists()) {
+                    deferred.complete(file.absolutePath)
+                } else {
+                    deferred.complete(null)
+                }
+            } catch (_: Exception) {
+                deferred.complete(null)
+            }
+        } else {
+            takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+                override fun onSuccess(result: ScreenshotResult) {
+                    try {
+                        val bitmap = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
+                        if (bitmap != null) {
+                            val softBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                            val screenshotsDir = File(cacheDir, "screenshots").apply { mkdirs() }
+                            val file = File(screenshotsDir, "screenshot_${System.currentTimeMillis()}.png")
+                            FileOutputStream(file).use { out ->
+                                softBitmap.compress(Bitmap.CompressFormat.PNG, 85, out)
+                            }
+                            softBitmap.recycle()
+                            bitmap.recycle()
+                            result.hardwareBuffer.close()
+                            deferred.complete(file.absolutePath)
+                        } else {
+                            result.hardwareBuffer.close()
+                            deferred.complete(null)
+                        }
+                    } catch (_: Exception) {
+                        deferred.complete(null)
+                    }
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    deferred.complete(null)
+                }
+            })
+        }
+        deferred.await()
+    }
+
+    private suspend fun readScreen(includeScreenshot: Boolean = false): JsonObject {
+        val screenshotJob = if (includeScreenshot) {
+            serviceScope.async { captureScreenshotAsync() }
+        } else null
+
         val rootNode = getActiveRootNodeWithRetry() ?: return buildJsonObject {
             put("error", "No active window")
             put("screen_width", screenWidth)
@@ -411,11 +596,17 @@ class CellClawAccessibility : AccessibilityService() {
         val elements = mutableListOf<JsonObject>()
         traverseNode(rootNode, elements)
 
+        val screenshotPath = screenshotJob?.await()
+
         return buildJsonObject {
             put("package", rootNode.packageName?.toString() ?: "unknown")
             put("screen_width", screenWidth)
             put("screen_height", screenHeight)
             put("element_count", elements.size)
+            if (screenshotPath != null) {
+                put("screenshot_path", screenshotPath)
+                put("has_screenshot", true)
+            }
             putJsonArray("elements") {
                 elements.forEach { add(it) }
             }
@@ -423,7 +614,7 @@ class CellClawAccessibility : AccessibilityService() {
     }
 
     private fun traverseNode(node: AccessibilityNodeInfo, elements: MutableList<JsonObject>, depth: Int = 0) {
-        if (depth > 15) return
+        if (depth > 25 || elements.size >= 500) return
 
         val text = node.text?.toString()
         val contentDesc = node.contentDescription?.toString()
@@ -431,9 +622,18 @@ class CellClawAccessibility : AccessibilityService() {
         val bounds = Rect()
         node.getBoundsInScreen(bounds)
 
+        // Clip bounds to display so center points are guaranteed visible on-screen
+        bounds.intersect(0, 0, screenWidth, screenHeight)
+
         // Include elements that have text, content description, or are interactive
         if (text != null || contentDesc != null || node.isClickable || node.isEditable) {
+            val cx = bounds.centerX()
+            val cy = bounds.centerY()
+            val normX = if (screenWidth > 0) (cx * 1000 / screenWidth).coerceIn(0, 1000) else 0
+            val normY = if (screenHeight > 0) (cy * 1000 / screenHeight).coerceIn(0, 1000) else 0
+
             elements.add(buildJsonObject {
+                put("index", elements.size)
                 put("type", className)
                 if (text != null) put("text", text)
                 if (contentDesc != null) put("desc", contentDesc)
@@ -441,19 +641,44 @@ class CellClawAccessibility : AccessibilityService() {
                 put("editable", node.isEditable)
                 put("scrollable", node.isScrollable)
                 put("checked", node.isChecked)
+                put("enabled", node.isEnabled)
+
+                // Artemis rich semantics
+                node.error?.let { put("error", it.toString()) }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    if (node.isHeading) put("is_heading", true)
+                    node.paneTitle?.let { put("pane_title", it.toString()) }
+                    node.tooltipText?.let { put("tooltip", it.toString()) }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    node.stateDescription?.let { put("state_desc", it.toString()) }
+                }
+
+                // Bounds in physical pixels & normalized 0-1000 scale
                 putJsonObject("bounds") {
                     put("left", bounds.left)
                     put("top", bounds.top)
                     put("right", bounds.right)
                     put("bottom", bounds.bottom)
-                    put("centerX", bounds.centerX())
-                    put("centerY", bounds.centerY())
+                    put("centerX", cx)
+                    put("centerY", cy)
+                    put("normX", normX)
+                    put("normY", normY)
                 }
             })
         }
 
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
+        val childCount = node.childCount
+        for (i in 0 until childCount) {
+            val child = if (Build.VERSION.SDK_INT >= 33) {
+                try {
+                    node.getChild(i, AccessibilityNodeInfo.FLAG_PREFETCH_DESCENDANTS_HYBRID)
+                } catch (_: Throwable) {
+                    node.getChild(i)
+                }
+            } else {
+                node.getChild(i)
+            } ?: continue
             traverseNode(child, elements, depth + 1)
         }
     }

@@ -262,7 +262,7 @@ class WakeWordService : Service() {
         )
 
         return NotificationCompat.Builder(this, CellClawApp.CHANNEL_WAKE_WORD)
-            .setContentTitle("CellClaw Wake Word")
+            .setContentTitle("APEX AI Voice Trigger")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(openIntent)

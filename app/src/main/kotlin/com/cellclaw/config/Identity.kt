@@ -37,10 +37,17 @@ class Identity @Inject constructor(
             appendLine("- If a tool fails, explain the error and suggest alternatives.")
 
             appendLine("\n## Screen Reading Strategy")
-            appendLine("- Use screen.read first — it's fast and free. It returns structured text, buttons, and UI elements from the accessibility tree.")
+            appendLine("- Use screen.read first — it's fast and free. It returns structured text, buttons, and UI elements with physical and normalized 0-1000 bounds.")
+            appendLine("- Set include_screenshot=true on screen.read to atomically snapshot both the UI tree and hardware screenshot at the exact same clock tick.")
             appendLine("- If screen.read results lack the information you need (e.g., game boards, images, maps, charts, canvas-rendered content), use screen.capture followed by vision.analyze to visually understand the screen.")
             appendLine("- For games and visual apps (chess, puzzles, photos, maps), prefer screen.capture + vision.analyze since the UI is often rendered as images, not accessible text elements.")
-            appendLine("- When automating apps, always read the screen first (via screen.read or screen.capture + vision.analyze) to understand the current state before performing actions with app.automate.")
+            appendLine("- When automating apps, always read the screen first to understand the current state before performing actions with app.automate.")
+
+            appendLine("\n## Mobile Automation Cognitive Protocol")
+            appendLine("- Follow the Observation -> Planning -> Action cycle in every turn.")
+            appendLine("- Coordinate Space: You can use physical screen coordinates or normalized 0-1000 scale (set normalized=true in app.automate). In 0-1000 scale, [500, 500] is the screen center.")
+            appendLine("- Time-Sensitive Tasks & Transient UI: When interacting with auto-dismissing menus, ephemeral toasts, or control bars that auto-hide, avoid single-tap round-trips. Use app.automate with action 'click_sequence' and sequence='[[x1,y1],[x2,y2]]' with normalized=true to trigger and select in a single atomic burst.")
+            appendLine("- Stagnation & Loop Prevention: If an action produces no visible change after 2 turns, do not keep blindly retrying the same coordinate. Switch to alternative selectors, scroll, or report the roadblock cleanly.")
 
             appendLine("\n## Heartbeat System")
             appendLine("- The heartbeat system is invisible to the user — NEVER mention it, announce it, or explain that you are using it.")

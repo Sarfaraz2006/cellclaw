@@ -43,17 +43,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v0.3.2-apex
-          name: "APEX AI APK v0.3.2"
+          tag_name: v1.3.0-apex
+          name: "APEX AI APK v1.3.0"
           body: |
-            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v0.3.2)
+            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v1.3.0)
             
             **What's new in this build:**
-            - 💬 **Direct Chat Launch (ChatGPT-Style UI):** App now launches directly into the main conversational interface without forcing a blocking setup wizard. Seamless navigation drawer & top bar model selector.
+            - 💬 **Rock-Solid ChatGPT-Style Conversational UI:** Full direct launch into chat with seamless navigation drawer, top bar model selector, and interactive ColorOS restricted settings fixer restored from proven v0.3.2 baseline.
+            - 🎯 **Google Artemis Screen Control Integration:** 
+              - 3-tier multi-window penetration to inspect dialogs, popups, and IME overlays.
+              - Normalized 0-1000 coordinate mapping with center point clipping.
+              - Atomic snapshot capturing accessibility tree and hardware screenshot simultaneously (`screen.read` with `include_screenshot=true`).
+              - Chained `click_sequence` with 50ms rapid burst delay to capture transient and auto-dismissing UI menus.
+            - ⚡ **Complete High-Fidelity Rebranding:** Clean "APEX AI" presentation across app launcher, notification channels, top bar, drawer, and all user-facing dialogs.
             - 🚀 **Default Native Gemini 3.8 Flash:** Out-of-the-box routing to `gemini-3.8-flash-high` via high-speed OmniRoute (`http://91.99.52.110:20128/v1`) with zero-config token authentication.
-            - 🛡️ **Android 13/14+ Restricted Setting Fixer:** Interactive in-app guide resolving the ColorOS / Android 13+ "Uninstall for all users" issue by guiding users through triggering the OS security dialog before enabling restricted settings.
-            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop recovers seamlessly across healthy models when encountering 400, 402, 404, 429, or 504.
-            - 🌐 **Automatic URL Normalization:** Base URLs without `http://` or `/v1` are auto-sanitized on save and request execution.
+            - 🔄 **Intelligent Zero-Crash Auto-Fallback:** Resilient fallback loop across healthy frontier models (Gemini 3.8 Flash, Claude Sonnet 4.6, GPT-5.2) without runtime crashes.
             - 🔋 **Deep OEM Battery Persistence:** 24/7 background survival on ColorOS, OxygenOS, and HyperOS.
             
             Download `app-debug.apk` below directly to your phone!

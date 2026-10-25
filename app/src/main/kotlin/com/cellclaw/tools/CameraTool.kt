@@ -32,7 +32,7 @@ class CameraSnapTool @Inject constructor(
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val imageFile = File(
                 context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                "CELLCLAW_$timestamp.jpg"
+                "APEX_$timestamp.jpg"
             )
 
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {

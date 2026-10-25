@@ -284,7 +284,7 @@ class OverlayService : Service() {
         }
 
         val label = TextView(this).apply {
-            text = "CellClaw"
+            text = "APEX AI"
             setTextColor(Color.parseColor("#BB86FC"))
             textSize = 11f
         }

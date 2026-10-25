@@ -89,7 +89,7 @@ fun ChatScreen(
                 android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
             )
             accessibilityConnected = enabled.any {
-                it.id?.contains("com.cellclaw") == true
+                it.id?.contains(context.packageName) == true || it.id?.contains("CellClawAccessibility") == true
             }
             delay(2_000)
         }

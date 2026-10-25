@@ -371,7 +371,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Enable wake word")
                             Text(
-                                "Say \"CellClaw\" to activate voice commands",
+                                "Say \"Hey Apex\" or \"APEX\" to activate voice commands",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -37,7 +37,7 @@ class BiometricGate @Inject constructor() {
 
         val prompt = BiometricPrompt(activity, executor, callback)
         val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("CellClaw Authentication")
+            .setTitle("APEX AI Authentication")
             .setSubtitle(reason)
             .setNegativeButtonText("Cancel")
             .build()

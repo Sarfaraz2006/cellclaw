@@ -82,4 +82,34 @@ class M1AccessibilityOptimizationTest {
     fun `accessibility action command constant is preserved`() {
         assertEquals("com.cellclaw.ACCESSIBILITY_ACTION", CellClawAccessibility.ACTION_COMMAND)
     }
+
+    @Test
+    fun `coordinate normalization and sequence parsing work correctly`() {
+        val service = CellClawAccessibility()
+
+        // Test raw coordinates pass-through
+        val raw = service.toScreenCoords(100, 200, normalized = false)
+        assertEquals(Pair(100, 200), raw)
+
+        // Test JSON sequence parsing
+        val jsonSeq = service.parsePointsSequence("[[100, 200], [300, 400], [500, 600]]")
+        assertEquals(3, jsonSeq.size)
+        assertEquals(Pair(100, 200), jsonSeq[0])
+        assertEquals(Pair(300, 400), jsonSeq[1])
+        assertEquals(Pair(500, 600), jsonSeq[2])
+
+        // Test fallback delimiter parsing ("x1,y1;x2,y2")
+        val delimSeq = service.parsePointsSequence("150,250; 350,450 | 550,650")
+        assertEquals(3, delimSeq.size)
+        assertEquals(Pair(150, 250), delimSeq[0])
+        assertEquals(Pair(350, 450), delimSeq[1])
+        assertEquals(Pair(550, 650), delimSeq[2])
+
+        // Test empty and invalid strings handled gracefully
+        val emptySeq = service.parsePointsSequence("")
+        assertTrue(emptySeq.isEmpty())
+
+        val malformedSeq = service.parsePointsSequence("invalid_json_and_not_points")
+        assertTrue(malformedSeq.isEmpty())
+    }
 }
