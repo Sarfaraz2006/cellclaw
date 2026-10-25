@@ -22,8 +22,8 @@ android {
         applicationId = "com.cellclaw"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.3.0"
+        versionCode = 7
+        versionName = "1.3.1"
         testInstrumentationRunner = "com.cellclaw.test.HiltTestRunner"
 
         buildConfigField("String", "GEMINI_API_KEY",

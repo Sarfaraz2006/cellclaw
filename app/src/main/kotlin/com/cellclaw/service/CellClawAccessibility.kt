@@ -45,15 +45,15 @@ class CellClawAccessibility : AccessibilityService() {
                     val result = when (action) {
                         "tap" -> {
                             val isNorm = intent.getBooleanExtra("normalized", false)
-                            val rawX = intent.getIntExtra("x", 0)
-                            val rawY = intent.getIntExtra("y", 0)
+                            val rawX = if (intent.hasExtra("x_double")) intent.getDoubleExtra("x_double", 0.0) else intent.getIntExtra("x", 0).toDouble()
+                            val rawY = if (intent.hasExtra("y_double")) intent.getDoubleExtra("y_double", 0.0) else intent.getIntExtra("y", 0).toDouble()
                             val (x, y) = toScreenCoords(rawX, rawY, isNorm)
                             handleTap(x, y, intent.getStringExtra("text"))
                         }
                         "tap_and_read" -> {
                             val isNorm = intent.getBooleanExtra("normalized", false)
-                            val rawX = intent.getIntExtra("x", 0)
-                            val rawY = intent.getIntExtra("y", 0)
+                            val rawX = if (intent.hasExtra("x_double")) intent.getDoubleExtra("x_double", 0.0) else intent.getIntExtra("x", 0).toDouble()
+                            val rawY = if (intent.hasExtra("y_double")) intent.getDoubleExtra("y_double", 0.0) else intent.getIntExtra("y", 0).toDouble()
                             val (x, y) = toScreenCoords(rawX, rawY, isNorm)
                             handleTapAndRead(
                                 x,
@@ -259,14 +259,20 @@ class CellClawAccessibility : AccessibilityService() {
 
     // ── Coordinate Normalization & Chained Sequence Support (Artemis Paradigm) ──
 
-    fun toScreenCoords(nx: Int, ny: Int, normalized: Boolean): Pair<Int, Int> {
+    fun toScreenCoords(nx: Double, ny: Double, normalized: Boolean): Pair<Int, Int> {
         return if (normalized) {
-            val px = (nx * screenWidth / 1000).coerceIn(0, screenWidth - 1)
-            val py = (ny * screenHeight / 1000).coerceIn(0, screenHeight - 1)
+            val normX = if (nx > 0.0 && nx <= 1.0) nx * 1000.0 else nx
+            val normY = if (ny > 0.0 && ny <= 1.0) ny * 1000.0 else ny
+            val px = (normX * screenWidth / 1000.0).toInt().coerceIn(0, screenWidth - 1)
+            val py = (normY * screenHeight / 1000.0).toInt().coerceIn(0, screenHeight - 1)
             Pair(px, py)
         } else {
-            Pair(nx, ny)
+            Pair(nx.toInt(), ny.toInt())
         }
+    }
+
+    fun toScreenCoords(nx: Int, ny: Int, normalized: Boolean): Pair<Int, Int> {
+        return toScreenCoords(nx.toDouble(), ny.toDouble(), normalized)
     }
 
     fun parsePointsSequence(seqStr: String): List<Pair<Int, Int>> {
@@ -276,20 +282,24 @@ class CellClawAccessibility : AccessibilityService() {
             if (element is JsonArray) {
                 for (item in element) {
                     if (item is JsonArray && item.size >= 2) {
-                        val x = item[0].jsonPrimitive.intOrNull ?: 0
-                        val y = item[1].jsonPrimitive.intOrNull ?: 0
+                        val rawX = (item[0] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull() ?: 0.0
+                        val rawY = (item[1] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull() ?: 0.0
+                        val x = if (rawX > 0.0 && rawX <= 1.0) (rawX * 1000.0).toInt() else rawX.toInt()
+                        val y = if (rawY > 0.0 && rawY <= 1.0) (rawY * 1000.0).toInt() else rawY.toInt()
                         points.add(Pair(x, y))
                     }
                 }
             }
         } catch (_: Exception) {
-            // Fallback comma/semicolon parser: "500,500;600,600"
+            // Fallback comma/semicolon parser: "500,500;600,600" or "0.5,0.5;0.8,0.2"
             val parts = seqStr.split(';', '|')
             for (p in parts) {
                 val coords = p.trim().split(',', ' ')
                 if (coords.size >= 2) {
-                    val x = coords[0].trim().toIntOrNull() ?: continue
-                    val y = coords[1].trim().toIntOrNull() ?: continue
+                    val rawX = coords[0].trim().toDoubleOrNull() ?: continue
+                    val rawY = coords[1].trim().toDoubleOrNull() ?: continue
+                    val x = if (rawX > 0.0 && rawX <= 1.0) (rawX * 1000.0).toInt() else rawX.toInt()
+                    val y = if (rawY > 0.0 && rawY <= 1.0) (rawY * 1000.0).toInt() else rawY.toInt()
                     points.add(Pair(x, y))
                 }
             }
@@ -336,42 +346,46 @@ class CellClawAccessibility : AccessibilityService() {
     // ── Tap ──────────────────────────────────────────────────────────────
 
     private suspend fun handleTap(x: Int, y: Int, text: String?): JsonObject {
-        if (text != null) {
-            val rootNode = getActiveRootNodeWithRetry() ?: return errorResult("No active window")
-            val nodes = rootNode.findAccessibilityNodeInfosByText(text)
-            if (nodes.isNullOrEmpty()) return errorResult("Element not found: '$text'")
+        if (!text.isNullOrBlank()) {
+            val rootNode = getActiveRootNodeWithRetry()
+            val nodes = rootNode?.findAccessibilityNodeInfosByText(text)
+            if (!nodes.isNullOrEmpty()) {
+                val node = nodes.first()
+                val clickable = findClickableParent(node) ?: node
+                val clicked = clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                if (clicked) {
+                    return successResult("tap", "Tapped on '$text'")
+                }
 
-            val node = nodes.first()
-            val clickable = findClickableParent(node) ?: node
-            val clicked = clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-            if (clicked) {
-                return successResult("tap", "Tapped on '$text'")
-            }
+                // Fallback: node click failed; inject coordinate tap at center of bounds
+                val bounds = Rect()
+                clickable.getBoundsInScreen(bounds)
+                if (bounds.isEmpty) {
+                    node.getBoundsInScreen(bounds)
+                }
 
-            // Fallback: node click failed; inject coordinate tap at center of bounds
-            val bounds = Rect()
-            clickable.getBoundsInScreen(bounds)
-            if (bounds.isEmpty) {
-                node.getBoundsInScreen(bounds)
-            }
+                if (!bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0) {
+                    val cx = bounds.centerX()
+                    val cy = bounds.centerY()
+                    val path = Path().apply { moveTo(cx.toFloat(), cy.toFloat()) }
+                    val gesture = GestureDescription.Builder()
+                        .addStroke(GestureDescription.StrokeDescription(path, 0, 50)) // Trimmed to 50ms
+                        .build()
 
-            if (!bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0) {
-                val cx = bounds.centerX()
-                val cy = bounds.centerY()
-                val path = Path().apply { moveTo(cx.toFloat(), cy.toFloat()) }
-                val gesture = GestureDescription.Builder()
-                    .addStroke(GestureDescription.StrokeDescription(path, 0, 50)) // Trimmed to 50ms
-                    .build()
-
-                return when (val state = dispatchGestureAwait(gesture)) {
-                    is GestureResultState.Success -> successResult("tap", "Tapped on '$text' via coordinate fallback ($cx, $cy)")
-                    is GestureResultState.Cancelled -> errorResult("Gesture cancelled for '$text' fallback: ${state.reason}")
-                    is GestureResultState.Rejected -> errorResult("Gesture rejected for '$text' fallback: ${state.reason}")
-                    is GestureResultState.TimedOut -> errorResult("Gesture timed out for '$text' fallback: ${state.reason}")
+                    return when (val state = dispatchGestureAwait(gesture)) {
+                        is GestureResultState.Success -> successResult("tap", "Tapped on '$text' via coordinate fallback ($cx, $cy)")
+                        is GestureResultState.Cancelled -> errorResult("Gesture cancelled for '$text' fallback: ${state.reason}")
+                        is GestureResultState.Rejected -> errorResult("Gesture rejected for '$text' fallback: ${state.reason}")
+                        is GestureResultState.TimedOut -> errorResult("Gesture timed out for '$text' fallback: ${state.reason}")
+                    }
                 }
             }
 
-            return errorResult("Click action failed on '$text' and coordinate bounds unavailable")
+            // If text was not found, but valid coordinates (x, y) were also provided, fall back to coordinate tap!
+            if (x <= 0 && y <= 0) {
+                return if (rootNode == null) errorResult("No active window") else errorResult("Element not found: '$text'")
+            }
+            Log.d(TAG, "Text '$text' not found on screen, falling back to coordinate tap ($x, $y)")
         }
 
         // Tap at coordinates
@@ -588,6 +602,7 @@ class CellClawAccessibility : AccessibilityService() {
         } else null
 
         val rootNode = getActiveRootNodeWithRetry() ?: return buildJsonObject {
+            put("success", false)
             put("error", "No active window")
             put("screen_width", screenWidth)
             put("screen_height", screenHeight)
@@ -599,6 +614,7 @@ class CellClawAccessibility : AccessibilityService() {
         val screenshotPath = screenshotJob?.await()
 
         return buildJsonObject {
+            put("success", true)
             put("package", rootNode.packageName?.toString() ?: "unknown")
             put("screen_width", screenWidth)
             put("screen_height", screenHeight)

@@ -477,13 +477,25 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    val a11yEnabled = remember {
+                    var a11yEnabled by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        val am = context.getSystemService(android.view.accessibility.AccessibilityManager::class.java)
                         val expected = ComponentName(context, "com.cellclaw.service.CellClawAccessibility")
-                        val flat = Settings.Secure.getString(
-                            context.contentResolver,
-                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-                        ) ?: ""
-                        flat.split(':').any { ComponentName.unflattenFromString(it) == expected }
+                        while (true) {
+                            val enabled = am?.getEnabledAccessibilityServiceList(
+                                android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+                            ) ?: emptyList()
+                            val flat = Settings.Secure.getString(
+                                context.contentResolver,
+                                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                            ) ?: ""
+                            val isEnabledInSettings = flat.split(':').any { ComponentName.unflattenFromString(it) == expected }
+                            val isEnabledInList = enabled.any {
+                                it.id?.contains(context.packageName) == true || it.id?.contains("CellClawAccessibility") == true
+                            }
+                            a11yEnabled = isEnabledInList || isEnabledInSettings
+                            kotlinx.coroutines.delay(2_000)
+                        }
                     }
 
                     Row(

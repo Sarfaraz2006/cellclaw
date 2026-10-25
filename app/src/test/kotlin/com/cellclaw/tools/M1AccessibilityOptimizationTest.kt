@@ -105,6 +105,23 @@ class M1AccessibilityOptimizationTest {
         assertEquals(Pair(350, 450), delimSeq[1])
         assertEquals(Pair(550, 650), delimSeq[2])
 
+        // Test float 0.0-1.0 JSON sequence parsing
+        val floatJsonSeq = service.parsePointsSequence("[[0.5, 0.5], [0.8, 0.2]]")
+        assertEquals(2, floatJsonSeq.size)
+        assertEquals(Pair(500, 500), floatJsonSeq[0])
+        assertEquals(Pair(800, 200), floatJsonSeq[1])
+
+        // Test float delimiter parsing
+        val floatDelimSeq = service.parsePointsSequence("0.5, 0.5; 0.8, 0.2")
+        assertEquals(2, floatDelimSeq.size)
+        assertEquals(Pair(500, 500), floatDelimSeq[0])
+        assertEquals(Pair(800, 200), floatDelimSeq[1])
+
+        // Test double coordinates normalization
+        val normCenterInt = service.toScreenCoords(500, 500, normalized = true)
+        val normCenterFloat = service.toScreenCoords(0.5, 0.5, normalized = true)
+        assertEquals(normCenterInt, normCenterFloat)
+
         // Test empty and invalid strings handled gracefully
         val emptySeq = service.parsePointsSequence("")
         assertTrue(emptySeq.isEmpty())

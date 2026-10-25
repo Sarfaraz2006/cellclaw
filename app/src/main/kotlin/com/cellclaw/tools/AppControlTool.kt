@@ -124,17 +124,40 @@ Requires accessibility permission enabled in system settings."""
 
             val (receiver, deferred) = AccessibilityBridge.createReceiver()
 
+            val xDouble = (params["x"] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()
+            val yDouble = (params["y"] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()
+            val seqElem = params["sequence"]
+            val seqStr = when (seqElem) {
+                is JsonPrimitive -> seqElem.contentOrNull
+                is JsonArray -> seqElem.toString()
+                else -> null
+            }
+            val delayMs = (params["delay_ms"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+            val isNorm = (params["normalized"] as? JsonPrimitive)?.booleanOrNull
+                ?: ((params["normalized"] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull())
+            val settleMs = (params["settle_ms"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+
             val intent = Intent(CellClawAccessibility.ACTION_COMMAND).apply {
                 putExtra("result_receiver", receiver)
                 putExtra("action", action)
-                params["text"]?.jsonPrimitive?.contentOrNull?.let { putExtra("text", it) }
-                params["x"]?.jsonPrimitive?.intOrNull?.let { putExtra("x", it) }
-                params["y"]?.jsonPrimitive?.intOrNull?.let { putExtra("y", it) }
-                params["sequence"]?.jsonPrimitive?.contentOrNull?.let { putExtra("sequence", it) }
-                params["delay_ms"]?.jsonPrimitive?.longOrNull?.let { putExtra("delay_ms", it) }
-                params["normalized"]?.jsonPrimitive?.booleanOrNull?.let { putExtra("normalized", it) }
-                params["direction"]?.jsonPrimitive?.contentOrNull?.let { putExtra("direction", it) }
-                params["settle_ms"]?.jsonPrimitive?.longOrNull?.let { putExtra("settle_ms", it) }
+                params["text"]?.let {
+                    if (it is JsonPrimitive) putExtra("text", it.content)
+                }
+                xDouble?.let {
+                    putExtra("x_double", it)
+                    putExtra("x", it.toInt())
+                }
+                yDouble?.let {
+                    putExtra("y_double", it)
+                    putExtra("y", it.toInt())
+                }
+                seqStr?.let { putExtra("sequence", it) }
+                delayMs?.let { putExtra("delay_ms", it) }
+                isNorm?.let { putExtra("normalized", it) }
+                params["direction"]?.let {
+                    if (it is JsonPrimitive) putExtra("direction", it.content)
+                }
+                settleMs?.let { putExtra("settle_ms", it) }
                 setPackage(context.packageName)
             }
             context.sendBroadcast(intent)

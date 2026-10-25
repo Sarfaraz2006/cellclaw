@@ -84,13 +84,20 @@ fun ChatScreen(
     var accessibilityConnected by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         val am = context.getSystemService(AccessibilityManager::class.java)
+        val expected = ComponentName(context, "com.cellclaw.service.CellClawAccessibility")
         while (true) {
-            val enabled = am.getEnabledAccessibilityServiceList(
+            val enabled = am?.getEnabledAccessibilityServiceList(
                 android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
-            )
-            accessibilityConnected = enabled.any {
+            ) ?: emptyList()
+            val flat = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: ""
+            val isEnabledInSettings = flat.split(':').any { ComponentName.unflattenFromString(it) == expected }
+            val isEnabledInList = enabled.any {
                 it.id?.contains(context.packageName) == true || it.id?.contains("CellClawAccessibility") == true
             }
+            accessibilityConnected = isEnabledInList || isEnabledInSettings
             delay(2_000)
         }
     }
@@ -317,7 +324,7 @@ fun ChatScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        "APEX AI v0.3.2 (Build 5)",
+                        "APEX AI v${com.cellclaw.BuildConfig.VERSION_NAME} (Build ${com.cellclaw.BuildConfig.VERSION_CODE})",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

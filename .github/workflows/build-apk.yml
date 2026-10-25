@@ -43,10 +43,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.3.0-apex
-          name: "APEX AI APK v1.3.0"
+          tag_name: v1.3.1-apex
+          name: "APEX AI APK v1.3.1"
           body: |
-            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v1.3.0)
+            ### ⚡ APEX AI — Autonomous AI Assistant for Android (v1.3.1)
             
             **What's new in this build:**
             - 💬 **Rock-Solid ChatGPT-Style Conversational UI:** Full direct launch into chat with seamless navigation drawer, top bar model selector, and interactive ColorOS restricted settings fixer restored from proven v0.3.2 baseline.
